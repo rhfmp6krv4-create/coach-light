@@ -775,7 +775,7 @@ async function startCoach() {
   // Read values
   CONFIG.intervalsId = document.getElementById('intervals-id').value.trim();
   CONFIG.intervalsKey = document.getElementById('intervals-key').value.trim();
-  CONFIG.claudeKey = document.getElementById('claude-key').value.trim();
+  CONFIG.claudeKey = document.getElementById('claude-key').value.trim() || 'sk-ant-api03-sRhLh0vl0Oz4VK3UmOrI4PcZNdrDg1IfqL6yOwevsDpbQP_D8X49QYlpwiZnGKln_oiJHQTYxAl6BCcgQ-ncfmlQAA';
   CONFIG.naam = document.getElementById('profile-naam').value.trim();
   CONFIG.leeftijd = document.getElementById('profile-leeftijd').value.trim();
   CONFIG.gewicht = document.getElementById('profile-gewicht').value.trim();
@@ -791,8 +791,8 @@ async function startCoach() {
   CONFIG.werk = document.getElementById('profile-werk').value;
   CONFIG.agenda = document.getElementById('profile-agenda').value.trim();
 
-  if (!CONFIG.intervalsId || !CONFIG.intervalsKey || !CONFIG.claudeKey || !CONFIG.naam || !CONFIG.doel) {
-    alert('Vul minimaal Intervals ID, API keys, naam en doel in.');
+  if (!CONFIG.intervalsId || !CONFIG.intervalsKey || !CONFIG.naam || !CONFIG.doel) {
+    alert('Vul minimaal Intervals ID, API key, naam en doel in.');
     return;
   }
 

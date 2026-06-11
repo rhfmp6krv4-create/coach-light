@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marathon Coach</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sand: #f5f0e8;
+  --sand-dark: #ede6d6;
+  --ink: #1c1917;
+  --ink-2: #57534e;
+  --ink-3: #a8a29e;
+  --accent: #c2410c;
+  --accent-light: #fff7ed;
+  --accent-border: #fed7aa;
+  --green: #15803d;
+  --green-light: #f0fdf4;
+  --border: #e2d9cc;
+  --surface: #fffcf7;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--sand);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* ── SETUP SCREEN ── */
+#setup-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 4px 32px rgba(28,25,23,0.08);
+}
+
+.setup-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  color: var(--ink);
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.setup-tagline {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-bottom: 32px;
+  font-style: italic;
+  font-family: 'DM Serif Display', serif;
+}
+
+.step-indicator {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+.step-dot {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.step-dot.active { background: var(--accent); }
+.step-dot.done { background: var(--ink-3); }
+
+.step-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.step-desc {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.step-desc a { color: var(--accent); text-decoration: none; }
+.step-desc a:hover { text-decoration: underline; }
+
+.field-group { margin-bottom: 16px; }
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+  font-family: 'DM Mono', monospace;
+}
+.field-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--sand);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.field-input:focus { border-color: var(--accent); background: var(--surface); }
+.field-input::placeholder { color: var(--ink-3); }
+
+.field-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--sand);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--ink);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2357534e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.btn-primary {
+  width: 100%;
+  padding: 13px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.15s;
+  letter-spacing: 0.01em;
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.15s;
+}
+.btn-secondary:hover { border-color: var(--ink-3); color: var(--ink); }
+
+.step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+
+.hint-box {
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+/* ── COACH APP ── */
+#app {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Caterpillar easter egg */
+.caterpillar-wrap {
+  position: fixed;
+  bottom: 12px;
+  left: 0;
+  pointer-events: none;
+  z-index: 999;
+  animation: crawl 28s linear infinite;
+  white-space: nowrap;
+  font-size: 16px;
+  line-height: 1;
+}
+@keyframes crawl {
+  0%   { transform: translateX(-60px); }
+  100% { transform: translateX(100vw); }
+}
+
+/* Widgets strip */
+.widgets-strip {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.widgets-strip::-webkit-scrollbar { display: none; }
+.widget-pill {
+  background: var(--sand);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+.widget-pill-label {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 3px;
+}
+.widget-pill-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  font-family: 'DM Serif Display', serif;
+}
+.widget-pill-sub {
+  font-size: 10px;
+  color: var(--ink-3);
+  margin-top: 1px;
+  font-family: 'DM Mono', monospace;
+}
+.widget-pill.green { border-color: #bbf7d0; background: #f0fdf4; }
+.widget-pill.amber { border-color: #fde68a; background: #fffbeb; }
+.widget-pill.red { border-color: #fecaca; background: #fef2f2; }
+.header-left { display: flex; flex-direction: column; }
+.header-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.header-sub { font-size: 11px; color: var(--ink-3); font-style: italic; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.status-row { display: flex; align-items: center; gap: 5px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+.status-dot.loading { background: #d97706; animation: pulse 1s infinite; }
+.status-dot.loaded { background: var(--green); }
+.status-dot.error { background: #dc2626; }
+.status-label { font-size: 11px; color: var(--ink-3); font-family: 'DM Mono', monospace; }
+
+.btn-settings {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+}
+.btn-settings:hover { border-color: var(--ink-3); }
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--surface);
+}
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  padding: 40px 20px;
+  gap: 16px;
+}
+.welcome-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.welcome-sub { font-size: 13px; color: var(--ink-2); line-height: 1.6; max-width: 340px; }
+
+.quick-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 24px 8px;
+  background: var(--surface);
+}
+.qa-btn {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--sand);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.qa-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+.input-area {
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  padding: 10px 16px;
+  background: var(--sand);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--ink);
+  outline: none;
+  resize: none;
+  min-height: 42px;
+  max-height: 120px;
+  transition: border-color 0.15s;
+}
+.chat-input:focus { border-color: var(--ink-3); background: var(--surface); }
+.chat-input::placeholder { color: var(--ink-3); }
+
+.send-btn {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  align-self: flex-end;
+  transition: opacity 0.15s;
+}
+.send-btn:hover:not(:disabled) { opacity: 0.8; }
+.send-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+.msg-wrap { display: flex; flex-direction: column; gap: 3px; }
+.msg-wrap.user { align-items: flex-end; }
+.msg-wrap.assistant { align-items: flex-start; width: 100%; }
+
+.msg-label {
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+  padding: 0 2px;
+}
+
+.msg-bubble {
+  max-width: 78%;
+  padding: 11px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+.msg-wrap.user .msg-bubble {
+  background: var(--ink);
+  color: #fff;
+  border-radius: 16px 16px 4px 16px;
+  max-width: 72%;
+  font-size: 13px;
+}
+.msg-wrap.assistant .msg-bubble {
+  background: transparent;
+  padding: 2px 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Markdown */
+.msg-bubble p { margin-bottom: 10px; }
+.msg-bubble p:last-child { margin-bottom: 0; }
+.msg-bubble strong { font-weight: 600; }
+.msg-bubble h2 { font-family: 'DM Serif Display', serif; font-size: 17px; font-weight: normal; margin: 16px 0 6px; letter-spacing: -0.01em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.msg-bubble h3 { font-size: 13px; font-weight: 600; margin: 12px 0 4px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.msg-bubble ul, .msg-bubble ol { padding-left: 18px; margin-bottom: 10px; }
+.msg-bubble li { margin-bottom: 4px; }
+.msg-bubble table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+.msg-bubble th { background: var(--sand); font-weight: 500; padding: 7px 12px; text-align: left; border: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
+.msg-bubble td { padding: 7px 12px; border: 1px solid var(--sand-dark); }
+.msg-bubble tr:nth-child(even) td { background: var(--sand); }
+.msg-bubble hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.msg-bubble code { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--sand); padding: 2px 5px; border-radius: 3px; }
+
+.typing-dots { display: flex; gap: 4px; align-items: center; padding: 8px 0; }
+.typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); animation: bounce 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+
+@media (max-width: 600px) {
+  .setup-card { padding: 28px 20px; }
+  .fields-row { grid-template-columns: 1fr; }
+  .messages { padding: 20px 16px; }
+  .input-area { padding: 10px 12px 14px; }
+  .quick-actions { padding: 0 12px 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">Marathon Coach</div>
+    <div class="setup-tagline">Persoonlijke coaching op basis van jouw trainingsdata</div>
+
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot-0"></div>
+      <div class="step-dot" id="dot-1"></div>
+      <div class="step-dot" style="display:none;" id="dot-2"></div>
+    </div>
+
+    <!-- Step 0: Intervals -->
+    <div id="step-0">
+      <div class="step-title">Intervals.icu koppelen</div>
+      <div class="step-desc">
+        Intervals.icu analyseert je trainingsdata en berekent je conditie. Gratis account op
+        <a href="https://intervals.icu" target="_blank">intervals.icu</a> — koppel daar je Strava of Garmin.
+      </div>
+      <div class="hint-box">
+        📍 <strong>Athlete ID:</strong> intervals.icu → klik op je naam rechtsbovenin → staat in de URL als <em>i1234567</em><br><br>
+        📍 <strong>API Key:</strong> intervals.icu → Instellingen (tandwiel) → Developer Settings → kopieer de API Key
+      </div>
+      <div class="field-group">
+        <label class="field-label">Intervals.icu Athlete ID</label>
+        <input class="field-input" id="intervals-id" placeholder="i1234567" type="text">
+        <div style="font-size:11px;color:var(--ink-3);margin-top:4px;">Staat in de URL als je ingelogd bent: intervals.icu/athlete/<em>i1234567</em>/...</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Intervals.icu API Key</label>
+        <input class="field-input" id="intervals-key" placeholder="API_KEY..." type="password">
+        <div style="font-size:11px;color:var(--ink-3);margin-top:4px;">Instellingen → Developer Settings → API Key (begin met "API_KEY:")</div>
+      </div>
+      <div id="sync-check-msg" style="display:none;font-size:12px;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;margin-bottom:12px;">
+        ✅ Bestaand profiel gevonden — laden...
+      </div>
+      <div class="step-nav">
+        <span></span>
+        <button class="btn-primary" onclick="checkExistingAndProceed()" style="width:auto;padding:10px 24px;">Volgende →</button>
+      </div>
+    </div>
+
+    <!-- Step 1: Claude (hidden - key pre-filled) -->
+    <div id="step-1" style="display:none;visibility:hidden;">
+      <div class="step-title">Claude API koppelen</div>
+      <div class="step-desc">
+        Claude is de coach die jouw data interpreteert. Maak een account op
+        <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>,
+        voeg betaalmethode toe en maak een API key aan. Kosten: ~€2-5 per maand bij normaal gebruik.
+      </div>
+      <div class="hint-box">
+        📍 API key vinden: console.anthropic.com → API Keys → Create Key
+      </div>
+      <div class="field-group">
+        <label class="field-label">Anthropic API Key</label>
+        <input class="field-input" id="claude-key" placeholder="sk-ant-..." type="password">
+      </div>
+      <div class="step-nav">
+        <button class="btn-secondary" onclick="goStep(0)">← Terug</button>
+        <button class="btn-primary" onclick="goStep(2)" style="width:auto;padding:10px 24px;">Volgende →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Profile -->
+    <div id="step-2" style="display:none;">
+      <div class="step-title">Jouw profiel</div>
+      <div class="step-desc">Een paar vragen zodat de coach écht op jou kan afstemmen. Alles wordt lokaal opgeslagen in je browser.</div>
+      <div class="hint-box">
+        💡 Vul in wat je weet — je kunt dit later altijd aanpassen via het ⚙ icoontje in de app.
+      </div>
+      <div class="fields-row">
+        <div class="field-group">
+          <label class="field-label">Naam</label>
+          <input class="field-input" id="profile-naam" placeholder="Lisa" type="text">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Leeftijd</label>
+          <input class="field-input" id="profile-leeftijd" placeholder="35" type="number">
+        </div>
+      </div>
+      <div class="fields-row">
+        <div class="field-group">
+          <label class="field-label">Gewicht (kg)</label>
+          <input class="field-input" id="profile-gewicht" placeholder="68" type="number">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Max hartslag</label>
+          <input class="field-input" id="profile-maxhr" placeholder="185" type="number">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Hoofddoel</label>
+        <input class="field-input" id="profile-doel" placeholder="Amsterdam Marathon finishen, 18 oktober 2026" type="text">
+      </div>
+      <div class="fields-row">
+        <div class="field-group">
+          <label class="field-label">Hoe lang hardloop je al?</label>
+          <select class="field-select" id="profile-ervaring">
+            <option value="">Kies...</option>
+            <option value="<1jaar">Minder dan 1 jaar</option>
+            <option value="1-3jaar">1-3 jaar</option>
+            <option value="3-5jaar">3-5 jaar</option>
+            <option value=">5jaar">Meer dan 5 jaar</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Km per week nu</label>
+          <select class="field-select" id="profile-volume">
+            <option value="">Kies...</option>
+            <option value="<20km">Minder dan 20 km</option>
+            <option value="20-40km">20-40 km</option>
+            <option value="40-60km">40-60 km</option>
+            <option value=">60km">Meer dan 60 km</option>
+          </select>
+        </div>
+      </div>
+      <div class="fields-row">
+        <div class="field-group">
+          <label class="field-label">Dagen per week beschikbaar</label>
+          <select class="field-select" id="profile-dagen">
+            <option value="">Kies...</option>
+            <option value="3">3 dagen</option>
+            <option value="4">4 dagen</option>
+            <option value="5">5 dagen</option>
+            <option value="6+">6 of meer</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Voorkeur trainingstijd</label>
+          <select class="field-select" id="profile-tijd">
+            <option value="">Kies...</option>
+            <option value="ochtend">Ochtend</option>
+            <option value="middag">Middag</option>
+            <option value="avond">Avond</option>
+            <option value="flexibel">Flexibel</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Beste recente prestatie (optioneel)</label>
+        <input class="field-input" id="profile-prestatie" placeholder="Bijv. 10km in 55 min, halve marathon in 2:10" type="text">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Werkschema</label>
+        <select class="field-select" id="profile-werk">
+          <option value="">Kies...</option>
+          <option value="kantoorbaan_vast">Kantoorbaan, vaste tijden</option>
+          <option value="kantoorbaan_flex">Kantoorbaan, flexibel</option>
+          <option value="ploegendienst">Ploegendienst / wisselende tijden</option>
+          <option value="thuis">Thuiswerker / zelfstandig</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Blessuregeschiedenis (optioneel)</label>
+        <input class="field-input" id="profile-blessure" placeholder="Bijv. knieklachten, shinspints" type="text">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Agenda URL (optioneel)</label>
+        <input class="field-input" id="profile-agenda" placeholder="webcal://... of https://calendar.google.com/..." type="text">
+        <div style="font-size:11px;color:var(--ink-3);margin-top:4px;">📍 Google Calendar → Instellingen → jouw agenda → Geheime iCal-URL kopiëren</div>
+      </div>
+      <div class="step-nav">
+        <button class="btn-secondary" onclick="goStep(0)">← Terug</button>
+        <button class="btn-primary" onclick="startCoach()" style="width:auto;padding:10px 28px;">🚀 Start Coach</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- COACH APP -->
+<div id="app">
+  <header class="header">
+    <div class="header-left">
+      <div class="header-title">Marathon Coach</div>
+      <div class="header-sub" id="header-sub">Laden...</div>
+    </div>
+    <div class="header-right">
+      <div class="status-row">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="status-label" id="status-label">wacht</div>
+      </div>
+      <button class="btn-settings" onclick="showSetup()">⚙ instellingen</button>
+    </div>
+  </header>
+
+  <!-- Widgets strip -->
+  <div class="widgets-strip" id="widgets-strip" style="display:none;">
+    <div class="widget-pill" id="w-countdown">
+      <div class="widget-pill-label">Amsterdam</div>
+      <div class="widget-pill-val" id="w-days">—</div>
+      <div class="widget-pill-sub">dagen</div>
+    </div>
+    <div class="widget-pill" id="w-fitness">
+      <div class="widget-pill-label">Conditie</div>
+      <div class="widget-pill-val" id="w-ctl">—</div>
+      <div class="widget-pill-sub" id="w-tsb">TSB —</div>
+    </div>
+    <div class="widget-pill" id="w-potentie">
+      <div class="widget-pill-label">Potentie</div>
+      <div class="widget-pill-val" id="w-pot-val">—</div>
+      <div class="widget-pill-sub" id="w-pot-sub">marathon</div>
+    </div>
+    <div class="widget-pill" id="w-weer">
+      <div class="widget-pill-label">Weer</div>
+      <div class="widget-pill-val" id="w-weer-val">—</div>
+      <div class="widget-pill-sub" id="w-weer-sub">ophalen...</div>
+    </div>
+    <div class="widget-pill" id="w-training">
+      <div class="widget-pill-label">Vandaag</div>
+      <div class="widget-pill-val" id="w-training-val">—</div>
+      <div class="widget-pill-sub" id="w-training-sub"></div>
+    </div>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <div class="welcome-title" id="welcome-title">Goedemiddag 👋</div>
+      <div class="welcome-sub">Stel een vraag of gebruik een snelknop hieronder om te beginnen.</div>
+    </div>
+  </div>
+
+  <div class="quick-actions">
+    <button class="qa-btn" onclick="quickSend('Analyseer mijn trainingen van de afgelopen 4 weken en geef een eerlijke inschatting van mijn marathonconditie.')">📊 Conditie check</button>
+    <button class="qa-btn" onclick="quickSend('Maak een macroplan voor de komende weken richting mijn marathondoel. Gebruik mijn recente trainingsdata als basis.')">📅 Macroplan</button>
+    <button class="qa-btn" onclick="quickSend('Genereer een gedetailleerd weekschema voor komende week op basis van mijn macroplan en huidige conditie.')">🗓 Weekschema</button>
+    <button class="qa-btn" onclick="quickSend('Ben ik op schema voor mijn marathondoel? Geef een eerlijk antwoord op basis van mijn trainingsdata.')">🎯 Op schema?</button>
+    <button class="qa-btn" onclick="quickSend('Wat zijn mijn grootste verbeterpunten op dit moment?')">💡 Verbeterpunten</button>
+  </div>
+
+  <div class="input-area">
+    <textarea class="chat-input" id="chat-input" placeholder="Stel je vraag..." rows="1"></textarea>
+    <button class="send-btn" id="send-btn" disabled>↑</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+let CONFIG = {
+  intervalsId: '',
+  intervalsKey: '',
+  claudeKey: 'sk-ant-api03-sRhLh0vl0Oz4VK3UmOrI4PcZNdrDg1IfqL6yOwevsDpbQP_D8X49QYlpwiZnGKln_oiJHQTYxAl6BCcgQ-ncfmlQAA',
+  naam: '',
+  leeftijd: '',
+  gewicht: '',
+  maxHR: '',
+  doel: '',
+  conditie: '',
+  blessure: '',
+  ervaring: '',
+  volume: '',
+  dagen: '',
+  tijd: '',
+  prestatie: '',
+  werk: '',
+  agenda: ''
+};
+
+// Load from localStorage
+function loadConfig() {
+  const saved = localStorage.getItem('coach-light-config');
+  if (saved) {
+    try { CONFIG = { ...CONFIG, ...JSON.parse(saved) }; return true; }
+    catch(e) { return false; }
+  }
+  return false;
+}
+
+function saveConfig() {
+  localStorage.setItem('coach-light-config', JSON.stringify(CONFIG));
+  syncSave('profile', CONFIG);
+}
+
+// ── SETUP WIZARD ──
+let currentStep = 0;
+
+function goStep(n) {
+  document.getElementById('step-' + currentStep).style.display = 'none';
+  document.getElementById('dot-' + currentStep).classList.remove('active');
+  document.getElementById('dot-' + currentStep).classList.add('done');
+
+  currentStep = n;
+  document.getElementById('step-' + n).style.display = 'block';
+  document.getElementById('dot-' + n).classList.remove('done');
+  document.getElementById('dot-' + n).classList.add('active');
+}
+
+function showSetup() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  // Pre-fill
+  document.getElementById('intervals-id').value = CONFIG.intervalsId || '';
+  document.getElementById('intervals-key').value = CONFIG.intervalsKey || '';
+  document.getElementById('claude-key').value = CONFIG.claudeKey || '';
+  document.getElementById('profile-naam').value = CONFIG.naam || '';
+  document.getElementById('profile-leeftijd').value = CONFIG.leeftijd || '';
+  document.getElementById('profile-gewicht').value = CONFIG.gewicht || '';
+  document.getElementById('profile-maxhr').value = CONFIG.maxHR || '';
+  document.getElementById('profile-doel').value = CONFIG.doel || '';
+  document.getElementById('profile-blessure').value = CONFIG.blessure || '';
+  document.getElementById('profile-ervaring').value = CONFIG.ervaring || '';
+  document.getElementById('profile-volume').value = CONFIG.volume || '';
+  document.getElementById('profile-dagen').value = CONFIG.dagen || '';
+  document.getElementById('profile-tijd').value = CONFIG.tijd || '';
+  document.getElementById('profile-prestatie').value = CONFIG.prestatie || '';
+  document.getElementById('profile-werk').value = CONFIG.werk || '';
+  document.getElementById('profile-agenda').value = CONFIG.agenda || '';
+}
+
+async function startCoach() {
+  // Read values
+  CONFIG.intervalsId = document.getElementById('intervals-id').value.trim();
+  CONFIG.intervalsKey = document.getElementById('intervals-key').value.trim();
+  CONFIG.claudeKey = document.getElementById('claude-key').value.trim();
+  CONFIG.naam = document.getElementById('profile-naam').value.trim();
+  CONFIG.leeftijd = document.getElementById('profile-leeftijd').value.trim();
+  CONFIG.gewicht = document.getElementById('profile-gewicht').value.trim();
+  CONFIG.maxHR = document.getElementById('profile-maxhr').value.trim();
+  CONFIG.doel = document.getElementById('profile-doel').value.trim();
+  CONFIG.conditie = document.getElementById('profile-conditie')?.value || '';
+  CONFIG.blessure = document.getElementById('profile-blessure').value.trim();
+  CONFIG.ervaring = document.getElementById('profile-ervaring').value;
+  CONFIG.volume = document.getElementById('profile-volume').value;
+  CONFIG.dagen = document.getElementById('profile-dagen').value;
+  CONFIG.tijd = document.getElementById('profile-tijd').value;
+  CONFIG.prestatie = document.getElementById('profile-prestatie').value.trim();
+  CONFIG.werk = document.getElementById('profile-werk').value;
+  CONFIG.agenda = document.getElementById('profile-agenda').value.trim();
+
+  if (!CONFIG.intervalsId || !CONFIG.intervalsKey || !CONFIG.claudeKey || !CONFIG.naam || !CONFIG.doel) {
+    alert('Vul minimaal Intervals ID, API keys, naam en doel in.');
+    return;
+  }
+
+  saveConfig();
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  // Update header
+  const uur = new Date().getHours();
+  const groet = uur < 12 ? 'Goedemorgen' : uur < 18 ? 'Goedemiddag' : 'Goedenavond';
+  document.getElementById('welcome-title').textContent = groet + ' ' + CONFIG.naam + ' 👋';
+  document.getElementById('header-sub').textContent = CONFIG.doel;
+
+  // Load data
+  await fetchIntervalsData();
+}
+
+// ── INTERVALS API ──
+let intervalsCtx = null;
+
+function setStatus(state, label) {
+  document.getElementById('status-dot').className = 'status-dot ' + state;
+  document.getElementById('status-label').textContent = label;
+}
+
+async function fetchIntervalsData() {
+  setStatus('loading', 'ophalen...');
+  try {
+    const auth = btoa('API_KEY:' + CONFIG.intervalsKey);
+    const headers = { 'Authorization': 'Basic ' + auth };
+
+    // Fetch athlete wellness (last 30 days)
+    const now = new Date();
+    const oldest = new Date(now - 42 * 86400000);
+    const fmt = d => d.toISOString().split('T')[0];
+
+    const [wellnessRes, activitiesRes] = await Promise.all([
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest)}&newest=${fmt(now)}`, { headers }),
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldest)}&newest=${fmt(now)}&limit=30`, { headers })
+    ]);
+
+    const wellness = wellnessRes.ok ? await wellnessRes.json() : [];
+    const activities = activitiesRes.ok ? await activitiesRes.json() : [];
+
+    intervalsCtx = { wellness, activities };
+
+    const now2 = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
+    setStatus('loaded', now2);
+    updateWidgets();
+  } catch(e) {
+    setStatus('error', 'fout');
+    console.error(e);
+  }
+}
+
+// ── SYSTEM PROMPT ──
+function buildSystemPrompt() {
+  const conditieLabels = {
+    beginner: 'Beginner (eerste marathon)',
+    sub5: 'Sub-5 uur', sub4_30: 'Sub-4:30',
+    sub4: 'Sub-4 uur', sub3_30: 'Sub-3:30', sub3: 'Sub-3 uur'
+  };
+
+  const ervaringLabels = {'<1jaar':'<1 jaar', '1-3jaar':'1-3 jaar', '3-5jaar':'3-5 jaar', '>5jaar':'>5 jaar'};
+  const volLabels = {'<20km':'<20 km/week', '20-40km':'20-40 km/week', '40-60km':'40-60 km/week', '>60km':'>60 km/week'};
+  const werkLabels = {'kantoorbaan_vast':'Kantoorbaan vaste tijden', 'kantoorbaan_flex':'Kantoorbaan flexibel', 'ploegendienst':'Ploegendienst', 'thuis':'Thuis/zelfstandig'};
+
+  const profiel = `# ATLEETPROFIEL
+Naam: ${CONFIG.naam}
+Leeftijd: ${CONFIG.leeftijd} jaar
+Gewicht: ${CONFIG.gewicht} kg
+Max hartslag: ${CONFIG.maxHR} bpm
+Hoofddoel: ${CONFIG.doel}
+Loopervaring: ${ervaringLabels[CONFIG.ervaring] || CONFIG.ervaring}
+Huidig volume: ${volLabels[CONFIG.volume] || CONFIG.volume}
+Beschikbaarheid: ${CONFIG.dagen} dagen/week, voorkeur ${CONFIG.tijd}
+Werkschema: ${werkLabels[CONFIG.werk] || CONFIG.werk}
+${CONFIG.prestatie ? 'Beste prestatie: ' + CONFIG.prestatie : 'Nog geen wedstrijdresultaten'}
+${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}
+${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}`;
+
+  const data = intervalsCtx ? `\n\n# TRAININGSDATA (Intervals.icu)
+WELLNESS (laatste 6 weken):
+${JSON.stringify(intervalsCtx.wellness?.slice(-42) || [], null, 2).substring(0, 4000)}
+
+ACTIVITEITEN (laatste 6 weken):
+${JSON.stringify(intervalsCtx.activities || [], null, 2).substring(0, 5000)}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
+
+  const memCtx = getMemCtx();
+  const isFirst = !CONFIG.prestatie || CONFIG.conditie === 'beginner' || CONFIG.conditie === 'sub5';
+  const approach = isFirst ? `
+# COACHFILOSOFIE EERSTE MARATHON
+- Blessurepreventie gaat boven alles. 10% opbouwregel wekelijks volume.
+- Sub-4 = ~5:41/km. Z1 <6:15/km, Z2 5:45-6:15/km, Z3 5:15-5:45/km
+- Nooit >3 weken opbouw achter elkaar — elke 4e week terugschakelen
+- Fueling cruciaal bij 4+ uur: koolhydraten elke 30-40 min vanaf km 10
+- Mentale begeleiding even belangrijk als fysiek
+- Bij twijfel: rust. Bij pijnsignaal: stop.
+- Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
+` : `
+# COACHFILOSOFIE GEVORDERD
+- Consistentie en belastbaarheid opbouwen
+- Kwaliteitssessies inbouwen zodra CTL > 40
+- Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
+`;
+
+  return `Je bent een persoonlijke marathoncoach. Je spreekt Nederlands, bent direct en eerlijk, vermijdt vage adviezen.
+
+${profiel}
+
+# COACHSTIJL
+- Open met de kern, geen omhaal
+- Concrete cijfers en tijden, geen abstracte adviezen
+- Benoem alleen 2-3 belangrijkste factoren per antwoord
+- Eindig met een duidelijke coachbeslissing of actie
+- Gebruik TSB/CTL/ATL uit Intervals voor herstel/belasting interpretatie
+
+# TSB INTERPRETATIE
+TSB > +5: fris, kwaliteit mogelijk
+TSB -5 tot +5: normale belasting
+TSB -10 tot -5: functionele vermoeidheid, bewaken
+TSB < -10: herstel prioriteren
+${approach}${data}
+${memCtx ? '\n\n# COACHGEHEUGEN\n' + memCtx : ''}
+
+Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}`;
+}
+
+// ── CHAT ──
+let messages = [], isLoading = false;
+const messagesEl = document.getElementById('messages');
+const chatInput = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+
+marked.setOptions({ breaks: true, gfm: true });
+
+chatInput.oninput = function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  sendBtn.disabled = !this.value.trim() || isLoading;
+};
+chatInput.onkeydown = e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!sendBtn.disabled) submit(); }
+};
+sendBtn.onclick = submit;
+
+function addMessage(role, content) {
+  document.getElementById('welcome')?.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap ' + role;
+  if (role === 'assistant') {
+    const lbl = document.createElement('div');
+    lbl.className = 'msg-label';
+    lbl.textContent = 'Coach';
+    wrap.appendChild(lbl);
+  }
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  if (role === 'assistant') {
+    bubble.innerHTML = marked.parse(content);
+  } else {
+    bubble.textContent = content;
+  }
+  wrap.appendChild(bubble);
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop = 99999;
+}
+
+function addTyping() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap assistant';
+  wrap.id = 'typing';
+  const lbl = document.createElement('div');
+  lbl.className = 'msg-label';
+  lbl.textContent = 'Coach';
+  wrap.appendChild(lbl);
+  const dots = document.createElement('div');
+  dots.className = 'typing-dots';
+  for (let i = 0; i < 3; i++) {
+    const d = document.createElement('div');
+    d.className = 'typing-dot';
+    dots.appendChild(d);
+  }
+  wrap.appendChild(dots);
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop = 99999;
+}
+
+function quickSend(text) {
+  chatInput.value = text;
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+  sendBtn.disabled = false;
+  submit();
+}
+
+async function submit() {
+  const text = chatInput.value.trim();
+  if (!text || isLoading) return;
+  isLoading = true;
+  sendBtn.disabled = true;
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+
+  messages.push({ role: 'user', content: text });
+  addMessage('user', text);
+  addTyping();
+
+  // Refresh data on each message
+  await fetchIntervalsData();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CONFIG.claudeKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: buildSystemPrompt(),
+        messages
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const reply = data.content[0].text;
+    messages.push({ role: 'assistant', content: reply });
+    parseCoachOutput(reply);
+    document.getElementById('typing')?.remove();
+    addMessage('assistant', reply);
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    addMessage('assistant', '❌ ' + e.message);
+  }
+
+  isLoading = false;
+  sendBtn.disabled = !chatInput.value.trim();
+  chatInput.focus();
+}
+
+// ── COUNTDOWN ──
+function updateCountdown() {
+  const race = new Date('2026-10-18T09:00:00');
+  const diff = race - new Date();
+  if (diff <= 0) return;
+  const days = Math.floor(diff / 86400000);
+  document.getElementById('w-days').textContent = days;
+}
+updateCountdown();
+setInterval(updateCountdown, 60000);
+
+// ── WIDGETS ──
+function updateWidgets() {
+  if (!intervalsCtx) return;
+  document.getElementById('widgets-strip').style.display = 'flex';
+  document.getElementById('caterpillar').style.display = 'block';
+
+  const wellness = intervalsCtx.wellness || [];
+  const latest = wellness[wellness.length - 1];
+
+  if (latest) {
+    const ctl = latest.ctl ? Math.round(latest.ctl) : null;
+    const atl = latest.atl ? Math.round(latest.atl) : null;
+    const tsb = (ctl && atl) ? Math.round(ctl - atl) : null;
+
+    if (ctl) document.getElementById('w-ctl').textContent = 'CTL ' + ctl;
+    if (tsb !== null) {
+      const tsbEl = document.getElementById('w-tsb');
+      tsbEl.textContent = 'TSB ' + (tsb > 0 ? '+' : '') + tsb;
+      const wFit = document.getElementById('w-fitness');
+      wFit.className = 'widget-pill ' + (tsb > 0 ? 'green' : tsb > -10 ? 'amber' : 'red');
+    }
+
+    // Potentie: HR-efficiency op basis van recente runs
+    const runs = (intervalsCtx.activities || []).filter(a =>
+      a.type === 'Run' && a.average_heartrate && a.distance && a.moving_time
+    ).slice(0, 10);
+
+    if (runs.length >= 3) {
+      const maxHR = parseInt(CONFIG.maxHR) || 185;
+      const rustHR = 50;
+      const drempel = maxHR - 14; // ~drempel
+      const hrReserve = maxHR - rustHR;
+      const punten = [];
+      for (const r of runs) {
+        const hr = r.average_heartrate;
+        if (hr < 130 || hr > drempel + 5) continue;
+        const distKm = r.distance / 1000;
+        if (distKm < 5) continue;
+        const pace = r.moving_time / distKm;
+        const hrrPct = (hr - rustHR) / hrReserve * 100;
+        punten.push([hrrPct, pace]);
+      }
+      if (punten.length >= 3) {
+        const n = punten.length;
+        const sX = punten.reduce((s,p)=>s+p[0],0);
+        const sY = punten.reduce((s,p)=>s+p[1],0);
+        const sXY = punten.reduce((s,p)=>s+p[0]*p[1],0);
+        const sXX = punten.reduce((s,p)=>s+p[0]*p[0],0);
+        const b = (n*sXY - sX*sY) / (n*sXX - sX*sX);
+        const a = (sY - b*sX) / n;
+        const marathonHRR = (drempel - 5 - rustHR) / hrReserve * 100;
+        const pace = (a + b * marathonHRR) * 1.05;
+        const marathonMin = pace * 42.195 / 60;
+        const h = Math.floor(marathonMin/60);
+        const m = Math.floor(marathonMin%60);
+        document.getElementById('w-pot-val').textContent = h + ':' + String(m).padStart(2,'0');
+        document.getElementById('w-pot-sub').textContent = 'marathon schatting';
+        const wPot = document.getElementById('w-potentie');
+        wPot.className = 'widget-pill ' + (marathonMin < 240 ? 'green' : marathonMin < 300 ? 'amber' : '');
+      }
+    }
+  }
+
+  // Weer (Open-Meteo, Zwolle als fallback — locatie uit profiel niet bekend)
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=5.47&current=temperature_2m,precipitation,weathercode,windspeed_10m&timezone=Europe%2FAmsterdam')
+    .then(r => r.json())
+    .then(d => {
+      const temp = Math.round(d.current.temperature_2m);
+      const code = d.current.weathercode;
+      const icons = {0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',71:'❄️',73:'❄️',75:'❄️',80:'🌦',81:'🌧',82:'⛈',95:'⛈'};
+      const icon = icons[code] || '🌡';
+      document.getElementById('w-weer-val').textContent = icon + ' ' + temp + '°C';
+      document.getElementById('w-weer-sub').textContent = d.current.windspeed_10m + ' km/h wind';
+    }).catch(() => {
+      document.getElementById('w-weer-val').textContent = '—';
+    });
+
+  // Training vandaag uit Intervals activities
+  const today = new Date().toISOString().split('T')[0];
+  const todayActs = (intervalsCtx.activities || []).filter(a => a.start_date_local?.startsWith(today));
+  if (todayActs.length > 0) {
+    const act = todayActs[0];
+    const distKm = act.distance ? (act.distance/1000).toFixed(1) : '';
+    document.getElementById('w-training-val').textContent = act.type || 'Training';
+    document.getElementById('w-training-sub').textContent = distKm ? distKm + ' km gedaan' : 'vandaag';
+    document.getElementById('w-training').className = 'widget-pill green';
+  } else {
+    document.getElementById('w-training-val').textContent = 'Rust';
+    document.getElementById('w-training-sub').textContent = 'geen activiteit';
+  }
+}
+
+// ── CHECK EXISTING PROFILE ──
+async function checkExistingAndProceed() {
+  const intervalsId = document.getElementById('intervals-id').value.trim();
+  const intervalsKey = document.getElementById('intervals-key').value.trim();
+
+  if (!intervalsId || !intervalsKey) {
+    alert('Vul je Intervals ID en API key in.');
+    return;
+  }
+
+  // Temporarily set ID to check Supabase
+  CONFIG.intervalsId = intervalsId;
+  CONFIG.intervalsKey = intervalsKey;
+
+  // Check if profile exists in Supabase
+  try {
+    const res = await fetch(
+      'https://wzrfdrcmkckcskhkddkr.supabase.co/rest/v1/coach_light_data?user_key=eq.' + intervalsId + '&data_type=eq.profile&select=content',
+      { headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cmZkcmNta2NrY3NraGtkZGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMzYxNDksImV4cCI6MjA5MzcxMjE0OX0.Pixh9yMCx6ACE3UsVNsByp3WeeJNei84VWVvDqD7wfE', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cmZkcmNta2NrY3NraGtkZGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMzYxNDksImV4cCI6MjA5MzcxMjE0OX0.Pixh9yMCx6ACE3UsVNsByp3WeeJNei84VWVvDqD7wfE' } }
+    );
+    const data = await res.json();
+    if (data && data.length > 0 && data[0].content) {
+      // Profile found — load it and skip wizard
+      const profile = data[0].content;
+      CONFIG = { ...CONFIG, ...profile };
+      CONFIG.intervalsId = intervalsId;
+      CONFIG.intervalsKey = intervalsKey;
+      saveConfig();
+
+      // Show success message briefly
+      document.getElementById('sync-check-msg').style.display = 'block';
+      setTimeout(async () => {
+        await startCoachDirect();
+      }, 800);
+      return;
+    }
+  } catch(e) {}
+
+  // No existing profile — continue to step 2 (profile)
+  goStep(2);
+}
+
+async function startCoachDirect() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  const uur = new Date().getHours();
+  const groet = uur < 12 ? 'Goedemorgen' : uur < 18 ? 'Goedemiddag' : 'Goedenavond';
+  document.getElementById('welcome-title').textContent = groet + ' ' + CONFIG.naam + ' 👋';
+  document.getElementById('header-sub').textContent = CONFIG.doel;
+  await loadMem();
+  fetchIntervalsData();
+}
+
+// ── SUPABASE SYNC ──
+const SB_URL = 'https://wzrfdrcmkckcskhkddkr.supabase.co';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cmZkcmNta2NrY3NraGtkZGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMzYxNDksImV4cCI6MjA5MzcxMjE0OX0.Pixh9yMCx6ACE3UsVNsByp3WeeJNei84VWVvDqD7wfE';
+
+function getUserKey() {
+  // Use Intervals ID as unique key — same on all devices
+  return CONFIG.intervalsId || localStorage.getItem('cl-userkey') || 'unknown';
+}
+
+async function syncSave(type, content) {
+  try {
+    await fetch(SB_URL + '/rest/v1/coach_light_data', {
+      method: 'POST',
+      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ user_key: getUserKey(), data_type: type, content: content, updated_at: new Date().toISOString() })
+    });
+  } catch(e) {}
+}
+
+async function syncLoadAll() {
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + getUserKey() + '&select=data_type,content', { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } });
+    const rows = await r.json();
+    const out = {};
+    for (const row of rows) out[row.data_type] = row.content;
+    return out;
+  } catch(e) { return null; }
+}
+
+// ── MEMORY ──
+let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [] };
+
+async function saveMem(type, data) {
+  MEM[type] = data;
+  localStorage.setItem('cl-mem-' + type, JSON.stringify(data));
+  await syncSave('mem_' + type, data);
+}
+
+async function loadMem() {
+  const cloud = await syncLoadAll();
+  if (cloud) {
+    if (cloud.profile) { CONFIG = { ...CONFIG, ...cloud.profile }; localStorage.setItem('coach-light-config', JSON.stringify(CONFIG)); }
+    ['macroplan','weekplannen','checkins','flags'].forEach(t => { if (cloud['mem_' + t]) MEM[t] = cloud['mem_' + t]; });
+  } else {
+    ['macroplan','weekplannen','checkins','flags'].forEach(t => { try { const s = localStorage.getItem('cl-mem-' + t); if (s) MEM[t] = JSON.parse(s); } catch(e) {} });
+  }
+}
+
+function getMemCtx() {
+  const p = [];
+  if (MEM.macroplan) p.push('MACROPLAN:\n' + JSON.stringify(MEM.macroplan));
+  if (MEM.weekplannen && MEM.weekplannen.length) p.push('RECENTE WEEKPLANNINGEN:\n' + JSON.stringify(MEM.weekplannen.slice(-3)));
+  if (MEM.checkins && MEM.checkins.length) p.push('RECENTE CHECK-INS:\n' + JSON.stringify(MEM.checkins.slice(-4)));
+  if (MEM.flags && MEM.flags.length) p.push('AANDACHTSPUNTEN:\n' + JSON.stringify(MEM.flags));
+  return p.join('\n\n');
+}
+
+function parseCoachOutput(text) {
+  if (text.includes('MACROPLAN_JSON:')) {
+    try { const j = text.split('MACROPLAN_JSON:')[1].split('\n\n')[0].trim(); saveMem('macroplan', JSON.parse(j)); } catch(e) {}
+  }
+  if (text.includes('WEEKPLAN_JSON:')) {
+    try {
+      const j = text.split('WEEKPLAN_JSON:')[1].split('\n\n')[0].trim();
+      const plannen = MEM.weekplannen || [];
+      plannen.push({ datum: new Date().toISOString().split('T')[0], plan: JSON.parse(j) });
+      saveMem('weekplannen', plannen.slice(-12));
+    } catch(e) {}
+  }
+}
+
+// ── CHECK-IN ──
+let ciScore = 0;
+
+function showCheckin() {
+  ciScore = 0;
+  document.getElementById('ci-opm').value = '';
+  document.getElementById('ci-gew').value = '';
+  document.querySelectorAll('.ci-btn').forEach(b => { b.style.opacity = '0.5'; b.style.border = '1px solid #e2d9cc'; });
+  document.getElementById('ci-modal').style.display = 'flex';
+}
+
+function setCiScore(s) {
+  ciScore = s;
+  document.querySelectorAll('.ci-btn').forEach(b => {
+    b.style.opacity = parseInt(b.dataset.s) === s ? '1' : '0.4';
+    b.style.border = parseInt(b.dataset.s) === s ? '2px solid #c2410c' : '1px solid #e2d9cc';
+  });
+}
+
+async function submitCheckin() {
+  const ci = { datum: new Date().toISOString().split('T')[0], score: ciScore, opmerkingen: document.getElementById('ci-opm').value.trim(), gewicht: document.getElementById('ci-gew').value || null };
+  const checkins = MEM.checkins || [];
+  checkins.push(ci);
+  await saveMem('checkins', checkins.slice(-20));
+  document.getElementById('ci-modal').style.display = 'none';
+  const labels = {1:'heel slecht',2:'slecht',3:'gemiddeld',4:'goed',5:'uitstekend'};
+  quickSend('Week check-in: gevoel ' + (labels[ciScore] || ciScore) + '/5' + (ci.opmerkingen ? ', bijzonderheden: ' + ci.opmerkingen : '') + (ci.gewicht ? ', gewicht: ' + ci.gewicht + ' kg' : '') + '. Analyseer mijn week op basis van de Intervals data en geef advies voor komende week.');
+}
+
+// ── INIT ──
+async function init() {
+  if (loadConfig() && CONFIG.intervalsId && CONFIG.claudeKey && CONFIG.naam) {
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    const uur = new Date().getHours();
+    const groet = uur < 12 ? 'Goedemorgen' : uur < 18 ? 'Goedemiddag' : 'Goedenavond';
+    document.getElementById('welcome-title').textContent = groet + ' ' + CONFIG.naam + ' 👋';
+    document.getElementById('header-sub').textContent = CONFIG.doel;
+    await loadMem();
+    fetchIntervalsData();
+  }
+}
+init();
+</script>
+  <!-- Check-in modal -->
+  <div id="ci-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;align-items:flex-end;justify-content:center;">
+    <div style="background:#fffcf7;border-radius:16px 16px 0 0;padding:24px;width:100%;max-width:600px;font-family:'DM Sans',sans-serif;">
+      <div style="font-size:16px;font-weight:500;margin-bottom:16px;color:#1c1917;">Week check-in</div>
+      <label style="font-size:11px;font-family:'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:#57534e;display:block;margin-bottom:8px;">Hoe voelde de week?</label>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button onclick="setCiScore(1)" class="ci-btn" data-s="1" style="flex:1;padding:10px;border:1px solid #e2d9cc;border-radius:8px;background:#f5f0e8;cursor:pointer;font-size:20px;opacity:0.5;">😩</button>
+        <button onclick="setCiScore(2)" class="ci-btn" data-s="2" style="flex:1;padding:10px;border:1px solid #e2d9cc;border-radius:8px;background:#f5f0e8;cursor:pointer;font-size:20px;opacity:0.5;">😕</button>
+        <button onclick="setCiScore(3)" class="ci-btn" data-s="3" style="flex:1;padding:10px;border:1px solid #e2d9cc;border-radius:8px;background:#f5f0e8;cursor:pointer;font-size:20px;opacity:0.5;">😐</button>
+        <button onclick="setCiScore(4)" class="ci-btn" data-s="4" style="flex:1;padding:10px;border:1px solid #e2d9cc;border-radius:8px;background:#f5f0e8;cursor:pointer;font-size:20px;opacity:0.5;">🙂</button>
+        <button onclick="setCiScore(5)" class="ci-btn" data-s="5" style="flex:1;padding:10px;border:1px solid #e2d9cc;border-radius:8px;background:#f5f0e8;cursor:pointer;font-size:20px;opacity:0.5;">😄</button>
+      </div>
+      <label style="font-size:11px;font-family:'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:#57534e;display:block;margin-bottom:6px;">Bijzonderheden (pijn, ziekte, stress)</label>
+      <textarea id="ci-opm" style="width:100%;padding:10px 14px;background:#f5f0e8;border:1px solid #e2d9cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:#1c1917;resize:none;height:72px;outline:none;margin-bottom:12px;" placeholder="Optioneel..."></textarea>
+      <label style="font-size:11px;font-family:'DM Mono',monospace;letter-spacing:0.06em;text-transform:uppercase;color:#57534e;display:block;margin-bottom:6px;">Gewicht kg (optioneel)</label>
+      <input type="number" id="ci-gew" step="0.1" style="width:100%;padding:10px 14px;background:#f5f0e8;border:1px solid #e2d9cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:#1c1917;outline:none;margin-bottom:16px;" placeholder="72.5">
+      <button onclick="submitCheckin()" style="width:100%;padding:12px;background:#1c1917;color:#fff;border:none;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:8px;">Opslaan en coach vragen om advies</button>
+      <button onclick="document.getElementById('ci-modal').style.display='none'" style="width:100%;padding:10px;border:none;background:#f5f0e8;border-radius:8px;color:#57534e;font-size:13px;cursor:pointer;">Annuleren</button>
+    </div>
+  </div>
+
+  <!-- Easter egg: caterpillar chasing hedgehog -->
+  <div class="caterpillar-wrap" id="caterpillar" style="display:none;">🐛&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;🦔</div>
+
+</body>
+</html>

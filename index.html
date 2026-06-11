@@ -703,7 +703,7 @@ body {
 let CONFIG = {
   intervalsId: '',
   intervalsKey: '',
-  claudeKey: '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',
+  claudeKey: '',
   naam: '',
   leeftijd: '',
   gewicht: '',
@@ -1006,13 +1006,10 @@ async function submit() {
   await fetchIntervalsData();
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': CONFIG.claudeKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',

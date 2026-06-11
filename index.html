@@ -1053,7 +1053,10 @@ setInterval(updateCountdown, 60000);
 function updateWidgets() {
   if (!intervalsCtx) return;
   document.getElementById('widgets-strip').style.display = 'flex';
-  document.getElementById('caterpillar').style.display = 'block';
+  if (!localStorage.getItem('cl-easter-seen')) {
+    document.getElementById('caterpillar').style.display = 'block';
+    localStorage.setItem('cl-easter-seen', '1');
+  }
 
   const wellness = intervalsCtx.wellness || [];
   const latest = wellness[wellness.length - 1];

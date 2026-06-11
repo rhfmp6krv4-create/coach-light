@@ -825,14 +825,15 @@ async function fetchIntervalsData() {
     const auth = btoa('API_KEY:' + CONFIG.intervalsKey);
     const headers = { 'Authorization': 'Basic ' + auth };
 
-    // Fetch athlete wellness (last 30 days)
+    // Fetch athlete wellness (last 42 days) + activities (last 90 days)
     const now = new Date();
     const oldest = new Date(now - 42 * 86400000);
+    const oldestActivities = new Date(now - 90 * 86400000);
     const fmt = d => d.toISOString().split('T')[0];
 
     const [wellnessRes, activitiesRes] = await Promise.all([
       fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest)}&newest=${fmt(now)}`, { headers }),
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldest)}&newest=${fmt(now)}&limit=30`, { headers })
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldestActivities)}&newest=${fmt(now)}&limit=90`, { headers })
     ]);
 
     const wellness = wellnessRes.ok ? await wellnessRes.json() : [];
@@ -879,8 +880,8 @@ ${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}`;
 WELLNESS (laatste 6 weken):
 ${JSON.stringify(intervalsCtx.wellness?.slice(-42) || [], null, 2).substring(0, 4000)}
 
-ACTIVITEITEN (laatste 6 weken):
-${JSON.stringify(intervalsCtx.activities || [], null, 2).substring(0, 5000)}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
+ACTIVITEITEN (laatste 3 maanden, meest recent eerst):
+${JSON.stringify([...(intervalsCtx.activities || [])].reverse(), null, 2).substring(0, 10000)}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
 
   const memCtx = getMemCtx();
   const isFirst = !CONFIG.prestatie || CONFIG.conditie === 'beginner' || CONFIG.conditie === 'sub5';

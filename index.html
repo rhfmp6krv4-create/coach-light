@@ -1294,9 +1294,35 @@ async function submitCheckin() {
   quickSend('Week check-in: gevoel ' + (labels[ciScore] || ciScore) + '/5' + (ci.opmerkingen ? ', bijzonderheden: ' + ci.opmerkingen : '') + (ci.gewicht ? ', gewicht: ' + ci.gewicht + ' kg' : '') + '. Analyseer mijn week op basis van de Intervals data en geef advies voor komende week.');
 }
 
+// ── URL PARAMS ──
+function loadFromURL() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('id')) CONFIG.intervalsId = p.get('id');
+  if (p.get('key')) CONFIG.intervalsKey = p.get('key');
+  if (p.get('naam')) CONFIG.naam = p.get('naam');
+  if (p.get('doel')) CONFIG.doel = p.get('doel');
+  if (p.get('leeftijd')) CONFIG.leeftijd = p.get('leeftijd');
+  if (p.get('gewicht')) CONFIG.gewicht = p.get('gewicht');
+  if (p.get('maxhr')) CONFIG.maxHR = p.get('maxhr');
+  if (p.get('ervaring')) CONFIG.ervaring = p.get('ervaring');
+  if (p.get('volume')) CONFIG.volume = p.get('volume');
+  if (p.get('dagen')) CONFIG.dagen = p.get('dagen');
+  if (p.get('prestatie')) CONFIG.prestatie = p.get('prestatie');
+  if (p.get('blessure')) CONFIG.blessure = p.get('blessure');
+  if (p.get('werk')) CONFIG.werk = p.get('werk');
+  if (p.get('agenda')) CONFIG.agenda = p.get('agenda');
+  CONFIG.claudeKey = 'sk-ant-api03-sRhLh0vl0Oz4VK3UmOrI4PcZNdrDg1IfqL6yOwevsDpbQP_D8X49QYlpwiZnGKln_oiJHQTYxAl6BCcgQ-ncfmlQAA';
+  if (CONFIG.intervalsId && CONFIG.intervalsKey && CONFIG.naam) {
+    saveConfig();
+    return true;
+  }
+  return false;
+}
+
 // ── INIT ──
 async function init() {
-  if (loadConfig() && CONFIG.intervalsId && CONFIG.claudeKey && CONFIG.naam) {
+  const fromURL = loadFromURL();
+  if (fromURL || (loadConfig() && CONFIG.intervalsId && CONFIG.claudeKey && CONFIG.naam)) {
     document.getElementById('setup-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     const uur = new Date().getHours();

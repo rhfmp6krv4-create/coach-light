@@ -895,8 +895,16 @@ ${CONFIG.prestatie ? 'Beste prestatie: ' + CONFIG.prestatie : 'Nog geen wedstrij
 ${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}
 ${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}`;
 
-  const wellnessJson = intervalsCtx ? trimToFit(intervalsCtx.wellness?.slice(-42) || [], 6000, true) : '[]';
-  const activitiesJson = intervalsCtx ? trimToFit([...(intervalsCtx.activities || [])].reverse(), 12000, false) : '[]';
+  // Sorteer expliciet op datum — onafhankelijk van de volgorde die de Intervals.icu API teruggeeft,
+  // zodat trimToFit altijd de juiste (oudste/nieuwste) kant afknipt.
+  const wellnessSorted = [...(intervalsCtx?.wellness || [])].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+  const activitiesSorted = [...(intervalsCtx?.activities || [])].sort((a, b) => (a.start_date_local || '').localeCompare(b.start_date_local || ''));
+
+  // wellnessSorted is oudste -> nieuwste. Pak laatste 42 dagen, en trim zo nodig de oudste eraf (trimFromStart=true).
+  const wellnessJson = intervalsCtx ? trimToFit(wellnessSorted.slice(-42), 6000, true) : '[]';
+  // activitiesSorted is oudste -> nieuwste. Voor "meest recent eerst" draaien we om;
+  // trim zo nodig de oudste (= laatste na omdraaien) eraf (trimFromStart=false).
+  const activitiesJson = intervalsCtx ? trimToFit(activitiesSorted.reverse(), 12000, false) : '[]';
 
   const data = intervalsCtx ? `\n\n# TRAININGSDATA (Intervals.icu)
 Dit is de ENIGE bron voor de trainingsgeschiedenis. Gebruik uitsluitend deze data om vragen over trainingen/activiteiten/archief te beantwoorden. Verzin NOOIT activiteiten, datums, afstanden of andere cijfers die hier niet letterlijk in staan. Als iets niet (meer) in deze data staat (bv. omdat het buiten de getoonde periode valt), zeg dat dan expliciet — beweer nooit dat iemand "niet getraind heeft" als dat niet uit deze data blijkt.

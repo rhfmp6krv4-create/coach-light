@@ -843,14 +843,18 @@ async function fetchIntervalsData() {
 }
 
 // ── SYSTEM PROMPT ──
-// Verwijder null/undefined/lege velden, zodat de JSON compacter is en de coach
-// niet wordt afgeleid door tientallen ongebruikte velden.
+// Verwijder null/undefined/lege velden EN geneste arrays/objecten (laps, intervals,
+// splits, streams, sportInfo, etc.) — dit zijn vaak grote sub-structuren per activiteit
+// die het tekenbudget opslokken, terwijl alleen de platte samenvattingsvelden
+// (type, datum, afstand, duur, HR, training load, snelheid) relevant zijn voor de coach.
 function stripNulls(arr) {
   return (arr || []).map(item => {
     const out = {};
     for (const k in item) {
       const v = item[k];
-      if (v !== null && v !== undefined && v !== '') out[k] = v;
+      if (v === null || v === undefined || v === '') continue;
+      if (typeof v === 'object') continue; // sla geneste structuren over
+      out[k] = v;
     }
     return out;
   });

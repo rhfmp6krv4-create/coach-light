@@ -843,6 +843,33 @@ async function fetchIntervalsData() {
 }
 
 // ── SYSTEM PROMPT ──
+// Verwijder null/undefined/lege velden, zodat de JSON compacter is en de coach
+// niet wordt afgeleid door tientallen ongebruikte velden.
+function stripNulls(arr) {
+  return (arr || []).map(item => {
+    const out = {};
+    for (const k in item) {
+      const v = item[k];
+      if (v !== null && v !== undefined && v !== '') out[k] = v;
+    }
+    return out;
+  });
+}
+
+// Trim array-items (nooit halverwege een object) totdat de JSON binnen maxChars
+// past. trimFromStart=true verwijdert de oudste items eerst (voor chronologisch
+// oplopende arrays); trimFromStart=false verwijdert vanaf het einde (voor
+// arrays die al "meest recent eerst" zijn).
+function trimToFit(dataArr, maxChars, trimFromStart) {
+  let data = stripNulls(dataArr);
+  let json = JSON.stringify(data, null, 2);
+  while (json.length > maxChars && data.length > 1) {
+    data = trimFromStart ? data.slice(1) : data.slice(0, -1);
+    json = JSON.stringify(data, null, 2);
+  }
+  return json;
+}
+
 function buildSystemPrompt() {
   const conditieLabels = {
     beginner: 'Beginner (eerste marathon)',
@@ -868,15 +895,21 @@ ${CONFIG.prestatie ? 'Beste prestatie: ' + CONFIG.prestatie : 'Nog geen wedstrij
 ${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}
 ${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}`;
 
-  const data = intervalsCtx ? `\n\n# TRAININGSDATA (Intervals.icu)
-WELLNESS (laatste 6 weken):
-${JSON.stringify(intervalsCtx.wellness?.slice(-42) || [], null, 2).substring(0, 4000)}
+  const wellnessJson = intervalsCtx ? trimToFit(intervalsCtx.wellness?.slice(-42) || [], 6000, true) : '[]';
+  const activitiesJson = intervalsCtx ? trimToFit([...(intervalsCtx.activities || [])].reverse(), 12000, false) : '[]';
 
-ACTIVITEITEN (laatste 3 maanden, meest recent eerst):
-${JSON.stringify([...(intervalsCtx.activities || [])].reverse(), null, 2).substring(0, 10000)}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
+  const data = intervalsCtx ? `\n\n# TRAININGSDATA (Intervals.icu)
+Dit is de ENIGE bron voor de trainingsgeschiedenis. Gebruik uitsluitend deze data om vragen over trainingen/activiteiten/archief te beantwoorden. Verzin NOOIT activiteiten, datums, afstanden of andere cijfers die hier niet letterlijk in staan. Als iets niet (meer) in deze data staat (bv. omdat het buiten de getoonde periode valt), zeg dat dan expliciet — beweer nooit dat iemand "niet getraind heeft" als dat niet uit deze data blijkt.
+
+WELLNESS (laatste weken — CTL/ATL/TSB/HRV/slaap/gewicht/stappen):
+${wellnessJson}
+
+ACTIVITEITEN (meest recent eerst):
+${activitiesJson}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
 
   const memCtx = getMemCtx();
   const isFirst = !CONFIG.prestatie || CONFIG.conditie === 'beginner' || CONFIG.conditie === 'sub5';
+  const flagInstructie = `- Als iemand iets noemt dat relevant is voor toekomstige planning (blessure, pijn, ziekte, drukke periode op werk, vakantie, etc.), sla dit op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false} (gebruik dezelfde "tag" om een eerder punt te updaten/op te lossen door "opgelost": true te zetten). Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.`;
   const approach = isFirst ? `
 # COACHFILOSOFIE EERSTE MARATHON
 - Blessurepreventie gaat boven alles. 10% opbouwregel wekelijks volume.
@@ -886,12 +919,12 @@ ${JSON.stringify([...(intervalsCtx.activities || [])].reverse(), null, 2).substr
 - Mentale begeleiding even belangrijk als fysiek
 - Bij twijfel: rust. Bij pijnsignaal: stop.
 - Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
-` : `
+${flagInstructie}` : `
 # COACHFILOSOFIE GEVORDERD
 - Consistentie en belastbaarheid opbouwen
 - Kwaliteitssessies inbouwen zodra CTL > 40
 - Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
-`;
+${flagInstructie}`;
 
   return `Je bent een persoonlijke marathoncoach. Je spreekt Nederlands, bent direct en eerlijk, vermijdt vage adviezen.
 
@@ -910,7 +943,7 @@ TSB -5 tot +5: normale belasting
 TSB -10 tot -5: functionele vermoeidheid, bewaken
 TSB < -10: herstel prioriteren
 ${approach}${data}
-${memCtx ? '\n\n# COACHGEHEUGEN\n' + memCtx : ''}
+${memCtx ? '\n\n# COACHGEHEUGEN (context uit eerdere gesprekken — gebruik dit voor planning/voorkeuren, NIET als bron voor "wat is er getraind", dat staat altijd in TRAININGSDATA hierboven)\n' + memCtx : ''}
 
 Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}`;
 }
@@ -1289,6 +1322,17 @@ function parseCoachOutput(text) {
         plannen.push({ datum: new Date().toISOString().split('T')[0], plan: JSON.parse(j) });
         saveMem('weekplannen', plannen.slice(-12));
       } catch(e) { console.warn('weekplan parse error:', e); }
+    }
+  }
+  if (text.includes('FLAG_JSON:')) {
+    const j = extractJsonBlock(text, 'FLAG_JSON:');
+    if (j) {
+      try {
+        const flag = JSON.parse(j);
+        const flags = (MEM.flags || []).filter(f => f.tag !== flag.tag); // vervang bestaande flag met zelfde tag
+        if (!flag.opgelost) flags.push({ datum: new Date().toISOString().split('T')[0], ...flag });
+        saveMem('flags', flags.slice(-10));
+      } catch(e) { console.warn('flag parse error:', e); }
     }
   }
 }

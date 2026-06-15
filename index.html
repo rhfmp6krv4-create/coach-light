@@ -823,15 +823,17 @@ async function fetchIntervalsData() {
     const oldestActivities = new Date(now - 90 * 86400000);
     const fmt = d => d.toISOString().split('T')[0];
 
-    const [wellnessRes, activitiesRes] = await Promise.all([
+    const [wellnessRes, activitiesRes, athleteRes] = await Promise.all([
       fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest)}&newest=${fmt(now)}`, { headers }),
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldestActivities)}&newest=${fmt(now)}&limit=90`, { headers })
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldestActivities)}&newest=${fmt(now)}&limit=90`, { headers }),
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}`, { headers })
     ]);
 
     const wellness = wellnessRes.ok ? await wellnessRes.json() : [];
     const activities = activitiesRes.ok ? await activitiesRes.json() : [];
+    const athlete = athleteRes.ok ? await athleteRes.json() : null;
 
-    intervalsCtx = { wellness, activities };
+    intervalsCtx = { wellness, activities, athlete };
 
     const now2 = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
     setStatus('loaded', now2);
@@ -904,6 +906,25 @@ function trimToFit(dataArr, maxChars, trimFromStart) {
   return json;
 }
 
+// Haal hartslagzones uit de athlete-settings (Intervals.icu) — meestal
+// nauwkeuriger dan de handmatig ingevulde maxHR uit de setup-wizard.
+function cleanHrZones(athlete) {
+  if (!athlete) return null;
+  const settings = (athlete.sportSettings || []).find(s => (s.types || []).includes('Run'))
+    || (athlete.sportSettings || [])[0];
+  if (!settings || !settings.hr_zones || !settings.hr_zones.length) return null;
+  const names = settings.hr_zone_names || [];
+  const zones = settings.hr_zones.map((bpm, i) => ({
+    zone: names[i] || `Zone ${i + 1}`,
+    tot_bpm: bpm
+  }));
+  return {
+    max_hr: settings.max_hr ?? athlete.max_hr ?? null,
+    lthr: settings.lthr ?? null,
+    zones
+  };
+}
+
 function buildSystemPrompt() {
   const conditieLabels = {
     beginner: 'Beginner (eerste marathon)',
@@ -914,6 +935,8 @@ function buildSystemPrompt() {
   const ervaringLabels = {'<1jaar':'<1 jaar', '1-3jaar':'1-3 jaar', '3-5jaar':'3-5 jaar', '>5jaar':'>5 jaar'};
   const volLabels = {'<20km':'<20 km/week', '20-40km':'20-40 km/week', '40-60km':'40-60 km/week', '>60km':'>60 km/week'};
   const werkLabels = {'kantoorbaan_vast':'Kantoorbaan vaste tijden', 'kantoorbaan_flex':'Kantoorbaan flexibel', 'ploegendienst':'Ploegendienst', 'thuis':'Thuis/zelfstandig'};
+
+  const hrZones = cleanHrZones(intervalsCtx?.athlete);
 
   const profiel = `# ATLEETPROFIEL
 Naam: ${CONFIG.naam}
@@ -927,7 +950,10 @@ Beschikbaarheid: ${CONFIG.dagen} dagen/week, voorkeur ${CONFIG.tijd}
 Werkschema: ${werkLabels[CONFIG.werk] || CONFIG.werk}
 ${CONFIG.prestatie ? 'Beste prestatie: ' + CONFIG.prestatie : 'Nog geen wedstrijdresultaten'}
 ${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}
-${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}`;
+${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}
+${hrZones ? `
+HARTSLAGZONES (Intervals.icu, ${hrZones.lthr ? 'LTHR ' + hrZones.lthr + ' bpm, ' : ''}max ${hrZones.max_hr} bpm):
+${hrZones.zones.map(z => `- ${z.zone}: tot ${z.tot_bpm} bpm`).join('\n')}` : ''}`;
 
   // Map naar schone, vaste velden (zie cleanActivity/cleanWellness), sorteer dan
   // expliciet op datum — onafhankelijk van de volgorde die de Intervals.icu API

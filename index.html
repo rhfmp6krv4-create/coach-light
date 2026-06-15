@@ -834,14 +834,11 @@ async function fetchIntervalsData() {
     const now = new Date();
     const oldest = new Date(now - 42 * 86400000);
     const oldestActivities = new Date(now - 90 * 86400000);
-    // +1 dag marge op 'newest' zodat activiteiten van vandaag niet buiten de
-    // range vallen door tijdzone-verschillen of een exclusieve bovengrens
-    const newest = new Date(now.getTime() + 86400000);
     const fmt = d => d.toISOString().split('T')[0];
 
     const [wellnessRes, activitiesRes] = await Promise.all([
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest)}&newest=${fmt(newest)}`, { headers }),
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldestActivities)}&newest=${fmt(newest)}&limit=90`, { headers })
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest)}&newest=${fmt(now)}`, { headers }),
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldestActivities)}&newest=${fmt(now)}&limit=90`, { headers })
     ]);
 
     const wellness = wellnessRes.ok ? await wellnessRes.json() : [];

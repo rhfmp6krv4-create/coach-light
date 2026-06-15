@@ -900,14 +900,22 @@ ${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}`;
   const wellnessSorted = [...(intervalsCtx?.wellness || [])].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
   const activitiesSorted = [...(intervalsCtx?.activities || [])].sort((a, b) => (a.start_date_local || '').localeCompare(b.start_date_local || ''));
 
+  // Voeg de dagnaam toe op basis van de datum — LLMs rekenen dagnamen uit datums
+  // onbetrouwbaar uit, JS doet dit altijd correct.
+  const addDag = (arr, dateField) => arr.map(item => {
+    const d = item[dateField];
+    if (!d) return item;
+    return { dag: new Date(d).toLocaleDateString('nl-NL', { weekday: 'long' }), ...item };
+  });
+
   // wellnessSorted is oudste -> nieuwste. Pak laatste 42 dagen, en trim zo nodig de oudste eraf (trimFromStart=true).
-  const wellnessJson = intervalsCtx ? trimToFit(wellnessSorted.slice(-42), 6000, true) : '[]';
+  const wellnessJson = intervalsCtx ? trimToFit(addDag(wellnessSorted.slice(-42), 'id'), 6000, true) : '[]';
   // activitiesSorted is oudste -> nieuwste. Voor "meest recent eerst" draaien we om;
   // trim zo nodig de oudste (= laatste na omdraaien) eraf (trimFromStart=false).
-  const activitiesJson = intervalsCtx ? trimToFit(activitiesSorted.reverse(), 12000, false) : '[]';
+  const activitiesJson = intervalsCtx ? trimToFit(addDag(activitiesSorted, 'start_date_local').reverse(), 12000, false) : '[]';
 
   const data = intervalsCtx ? `\n\n# TRAININGSDATA (Intervals.icu)
-Dit is de ENIGE bron voor de trainingsgeschiedenis. Gebruik uitsluitend deze data om vragen over trainingen/activiteiten/archief te beantwoorden. Verzin NOOIT activiteiten, datums, afstanden of andere cijfers die hier niet letterlijk in staan. Als iets niet (meer) in deze data staat (bv. omdat het buiten de getoonde periode valt), zeg dat dan expliciet — beweer nooit dat iemand "niet getraind heeft" als dat niet uit deze data blijkt.
+Dit is de ENIGE bron voor de trainingsgeschiedenis. Gebruik uitsluitend deze data om vragen over trainingen/activiteiten/archief te beantwoorden. Verzin NOOIT activiteiten, datums, afstanden of andere cijfers die hier niet letterlijk in staan. Als iets niet (meer) in deze data staat (bv. omdat het buiten de getoonde periode valt), zeg dat dan expliciet — beweer nooit dat iemand "niet getraind heeft" als dat niet uit deze data blijkt. Gebruik voor de dagnaam (maandag/dinsdag/etc.) ALTIJD het veld "dag" — reken dit nooit zelf uit uit de datum, dat gaat vaak mis.
 
 WELLNESS (laatste weken — CTL/ATL/TSB/HRV/slaap/gewicht/stappen):
 ${wellnessJson}

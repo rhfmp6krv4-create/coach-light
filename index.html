@@ -1209,12 +1209,16 @@ function getUserKey() {
 
 async function syncSave(type, content) {
   try {
-    await fetch(SB_URL + '/rest/v1/coach_light_data', {
+    const res = await fetch(SB_URL + '/rest/v1/coach_light_data?on_conflict=user_key,data_type', {
       method: 'POST',
       headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({ user_key: getUserKey(), data_type: type, content: content, updated_at: new Date().toISOString() })
     });
-  } catch(e) {}
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn('syncSave failed:', type, res.status, errText);
+    }
+  } catch(e) { console.warn('syncSave error:', type, e); }
 }
 
 async function syncLoadAll() {

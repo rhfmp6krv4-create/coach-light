@@ -1232,7 +1232,15 @@ async function saveMem(type, data) {
 async function loadMem() {
   const cloud = await syncLoadAll();
   if (cloud) {
-    if (cloud.profile) { CONFIG = { ...CONFIG, ...cloud.profile }; localStorage.setItem('coach-light-config', JSON.stringify(CONFIG)); }
+    if (cloud.profile) {
+      // Cloud-profiel is leidend (bv. recente API-key update overschrijven we niet
+      // met een verouderde URL-bookmark of localStorage-cache)
+      CONFIG = { ...CONFIG, ...cloud.profile };
+      localStorage.setItem('coach-light-config', JSON.stringify(CONFIG));
+    } else if (CONFIG.intervalsId && CONFIG.intervalsKey && CONFIG.naam) {
+      // Nog geen cloud-profiel — dit is de eerste keer, dus opslaan
+      syncSave('profile', CONFIG);
+    }
     ['macroplan','weekplannen','checkins','flags'].forEach(t => { if (cloud['mem_' + t]) MEM[t] = cloud['mem_' + t]; });
   } else {
     ['macroplan','weekplannen','checkins','flags'].forEach(t => { try { const s = localStorage.getItem('cl-mem-' + t); if (s) MEM[t] = JSON.parse(s); } catch(e) {} });
@@ -1333,7 +1341,10 @@ function loadFromURL() {
   if (p.get('agenda')) CONFIG.agenda = p.get('agenda');
   CONFIG.claudeKey = 'sk-ant-api03-sRhLh0vl0Oz4VK3UmOrI4PcZNdrDg1IfqL6yOwevsDpbQP_D8X49QYlpwiZnGKln_oiJHQTYxAl6BCcgQ-ncfmlQAA';
   if (CONFIG.intervalsId && CONFIG.intervalsKey && CONFIG.naam) {
-    saveConfig();
+    // Niet direct naar Supabase pushen — alleen lokaal opslaan.
+    // loadMem() bepaalt daarna of het cloud-profiel leidend is (bestaat het al)
+    // of dat dit de eerste keer is dat dit profiel wordt opgeslagen.
+    localStorage.setItem('coach-light-config', JSON.stringify(CONFIG));
     return true;
   }
   return false;

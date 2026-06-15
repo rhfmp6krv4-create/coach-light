@@ -843,21 +843,51 @@ async function fetchIntervalsData() {
 }
 
 // ── SYSTEM PROMPT ──
-// Verwijder null/undefined/lege velden EN geneste arrays/objecten (laps, intervals,
-// splits, streams, sportInfo, etc.) — dit zijn vaak grote sub-structuren per activiteit
-// die het tekenbudget opslokken, terwijl alleen de platte samenvattingsvelden
-// (type, datum, afstand, duur, HR, training load, snelheid) relevant zijn voor de coach.
+// Verwijder null/undefined/lege velden uit een array van platte objecten.
 function stripNulls(arr) {
   return (arr || []).map(item => {
     const out = {};
     for (const k in item) {
       const v = item[k];
-      if (v === null || v === undefined || v === '') continue;
-      if (typeof v === 'object') continue; // sla geneste structuren over
-      out[k] = v;
+      if (v !== null && v !== undefined && v !== '') out[k] = v;
     }
     return out;
   });
+}
+
+// Bouw een schone, vaste set velden per activiteit — zelfde principe als de
+// 'trainingen'-array die Coach Rob via coach-context krijgt: simpele namen,
+// leesbare eenheden (km, minuten), geen geneste lap/interval-structuren die
+// het tekenbudget opslokken.
+function cleanActivity(a) {
+  return {
+    dag: a.start_date_local ? new Date(a.start_date_local).toLocaleDateString('nl-NL', { weekday: 'long' }) : null,
+    datum: a.start_date_local ? a.start_date_local.split('T')[0] : null,
+    type: a.type ?? null,
+    naam: a.name ?? null,
+    afstand_km: a.distance != null ? Math.round(a.distance / 100) / 10 : null,
+    duur_min: a.moving_time != null ? Math.round(a.moving_time / 60) : null,
+    hr_gem: a.average_heartrate != null ? Math.round(a.average_heartrate) : null,
+    hr_max: a.max_heartrate != null ? Math.round(a.max_heartrate) : null,
+    training_load: a.icu_training_load ?? null,
+    hoogtemeters: a.total_elevation_gain != null ? Math.round(a.total_elevation_gain) : null,
+  };
+}
+
+// Zelfde principe voor wellness-dagen.
+function cleanWellness(w) {
+  return {
+    dag: w.id ? new Date(w.id).toLocaleDateString('nl-NL', { weekday: 'long' }) : null,
+    datum: w.id ?? null,
+    ctl: w.ctl != null ? Math.round(w.ctl * 10) / 10 : null,
+    atl: w.atl != null ? Math.round(w.atl * 10) / 10 : null,
+    tsb: (w.ctl != null && w.atl != null) ? Math.round((w.ctl - w.atl) * 10) / 10 : null,
+    rust_hr: w.restingHR ?? null,
+    slaap_uren: w.sleepSecs != null ? Math.round(w.sleepSecs / 360) / 10 : null,
+    gewicht: w.weight ?? null,
+    stappen: w.steps ?? null,
+    vo2max: w.vo2max ?? null,
+  };
 }
 
 // Trim array-items (nooit halverwege een object) totdat de JSON binnen maxChars
@@ -899,29 +929,24 @@ ${CONFIG.prestatie ? 'Beste prestatie: ' + CONFIG.prestatie : 'Nog geen wedstrij
 ${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}
 ${CONFIG.agenda ? 'Agenda beschikbaar: ja (iCal gekoppeld)' : ''}`;
 
-  // Sorteer expliciet op datum — onafhankelijk van de volgorde die de Intervals.icu API teruggeeft,
-  // zodat trimToFit altijd de juiste (oudste/nieuwste) kant afknipt.
-  const wellnessSorted = [...(intervalsCtx?.wellness || [])].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
-  const activitiesSorted = [...(intervalsCtx?.activities || [])].sort((a, b) => (a.start_date_local || '').localeCompare(b.start_date_local || ''));
+  // Map naar schone, vaste velden (zie cleanActivity/cleanWellness), sorteer dan
+  // expliciet op datum — onafhankelijk van de volgorde die de Intervals.icu API
+  // teruggeeft — zodat trimToFit altijd de juiste (oudste/nieuwste) kant afknipt.
+  const wellnessClean = (intervalsCtx?.wellness || []).map(cleanWellness)
+    .sort((a, b) => (a.datum || '').localeCompare(b.datum || ''));
+  const activitiesClean = (intervalsCtx?.activities || []).map(cleanActivity)
+    .sort((a, b) => (a.datum || '').localeCompare(b.datum || ''));
 
-  // Voeg de dagnaam toe op basis van de datum — LLMs rekenen dagnamen uit datums
-  // onbetrouwbaar uit, JS doet dit altijd correct.
-  const addDag = (arr, dateField) => arr.map(item => {
-    const d = item[dateField];
-    if (!d) return item;
-    return { dag: new Date(d).toLocaleDateString('nl-NL', { weekday: 'long' }), ...item };
-  });
-
-  // wellnessSorted is oudste -> nieuwste. Pak laatste 42 dagen, en trim zo nodig de oudste eraf (trimFromStart=true).
-  const wellnessJson = intervalsCtx ? trimToFit(addDag(wellnessSorted.slice(-42), 'id'), 6000, true) : '[]';
-  // activitiesSorted is oudste -> nieuwste. Voor "meest recent eerst" draaien we om;
+  // wellnessClean is oudste -> nieuwste. Pak laatste 42 dagen, en trim zo nodig de oudste eraf (trimFromStart=true).
+  const wellnessJson = intervalsCtx ? trimToFit(wellnessClean.slice(-42), 6000, true) : '[]';
+  // activitiesClean is oudste -> nieuwste. Voor "meest recent eerst" draaien we om;
   // trim zo nodig de oudste (= laatste na omdraaien) eraf (trimFromStart=false).
-  const activitiesJson = intervalsCtx ? trimToFit(addDag(activitiesSorted, 'start_date_local').reverse(), 12000, false) : '[]';
+  const activitiesJson = intervalsCtx ? trimToFit(activitiesClean.reverse(), 12000, false) : '[]';
 
   const data = intervalsCtx ? `\n\n# TRAININGSDATA (Intervals.icu)
 Dit is de ENIGE bron voor de trainingsgeschiedenis. Gebruik uitsluitend deze data om vragen over trainingen/activiteiten/archief te beantwoorden. Verzin NOOIT activiteiten, datums, afstanden of andere cijfers die hier niet letterlijk in staan. Als iets niet (meer) in deze data staat (bv. omdat het buiten de getoonde periode valt), zeg dat dan expliciet — beweer nooit dat iemand "niet getraind heeft" als dat niet uit deze data blijkt. Gebruik voor de dagnaam (maandag/dinsdag/etc.) ALTIJD het veld "dag" — reken dit nooit zelf uit uit de datum, dat gaat vaak mis.
 
-WELLNESS (laatste weken — CTL/ATL/TSB/HRV/slaap/gewicht/stappen):
+WELLNESS (laatste weken — ctl/atl/tsb/rust_hr/slaap_uren/gewicht/stappen/vo2max):
 ${wellnessJson}
 
 ACTIVITEITEN (meest recent eerst):

@@ -829,11 +829,14 @@ async function fetchIntervalsData() {
     const now = new Date();
     const oldest = new Date(now - 42 * 86400000);
     const oldestActivities = new Date(now - 90 * 86400000);
+    // +1 dag marge op 'newest' zodat activiteiten van vandaag niet buiten de
+    // range vallen door tijdzone-verschillen of een exclusieve bovengrens
+    const newest = new Date(now.getTime() + 86400000);
     const fmt = d => d.toISOString().split('T')[0];
 
     const [wellnessRes, activitiesRes] = await Promise.all([
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest)}&newest=${fmt(now)}`, { headers }),
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldestActivities)}&newest=${fmt(now)}&limit=90`, { headers })
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest)}&newest=${fmt(newest)}`, { headers }),
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldestActivities)}&newest=${fmt(newest)}&limit=90`, { headers })
     ]);
 
     const wellness = wellnessRes.ok ? await wellnessRes.json() : [];
@@ -1252,17 +1255,40 @@ function getMemCtx() {
   return p.join('\n\n');
 }
 
+// Extraheer een compleet JSON-object door brackets te balanceren,
+// vanaf de eerste '{' na het gegeven label, tot aan de bijbehorende sluitende '}'.
+function extractJsonBlock(text, label) {
+  const idx = text.indexOf(label);
+  if (idx === -1) return null;
+  const start = text.indexOf('{', idx);
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 function parseCoachOutput(text) {
   if (text.includes('MACROPLAN_JSON:')) {
-    try { const j = text.split('MACROPLAN_JSON:')[1].split('\n\n')[0].trim(); saveMem('macroplan', JSON.parse(j)); } catch(e) {}
+    const j = extractJsonBlock(text, 'MACROPLAN_JSON:');
+    if (j) {
+      try { saveMem('macroplan', JSON.parse(j)); } catch(e) { console.warn('macroplan parse error:', e); }
+    }
   }
   if (text.includes('WEEKPLAN_JSON:')) {
-    try {
-      const j = text.split('WEEKPLAN_JSON:')[1].split('\n\n')[0].trim();
-      const plannen = MEM.weekplannen || [];
-      plannen.push({ datum: new Date().toISOString().split('T')[0], plan: JSON.parse(j) });
-      saveMem('weekplannen', plannen.slice(-12));
-    } catch(e) {}
+    const j = extractJsonBlock(text, 'WEEKPLAN_JSON:');
+    if (j) {
+      try {
+        const plannen = MEM.weekplannen || [];
+        plannen.push({ datum: new Date().toISOString().split('T')[0], plan: JSON.parse(j) });
+        saveMem('weekplannen', plannen.slice(-12));
+      } catch(e) { console.warn('weekplan parse error:', e); }
+    }
   }
 }
 

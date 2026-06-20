@@ -293,6 +293,19 @@ body {
 .status-dot.error { background: #dc2626; }
 .status-label { font-size: 11px; color: var(--ink-3); font-family: 'DM Mono', monospace; }
 
+.model-select {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  outline: none;
+}
+.model-select:hover { border-color: var(--ink-3); }
+
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -633,6 +646,10 @@ body {
       <div class="header-sub" id="header-sub">Laden...</div>
     </div>
     <div class="header-right">
+      <select class="model-select" id="model-select">
+        <option value="claude-haiku-4-5-20251001" selected>Haiku</option>
+        <option value="claude-sonnet-4-6">Sonnet</option>
+      </select>
       <div class="status-row">
         <div class="status-dot" id="status-dot"></div>
         <div class="status-label" id="status-label">wacht</div>
@@ -1034,6 +1051,7 @@ let messages = [], isLoading = false;
 const messagesEl = document.getElementById('messages');
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
+const modelSelect = document.getElementById('model-select');
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -1119,7 +1137,7 @@ async function submit() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: modelSelect.value,
         max_tokens: 1500,
         system: buildSystemPrompt(),
         messages

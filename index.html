@@ -997,7 +997,9 @@ ${activitiesJson}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
 
   const memCtx = getMemCtx();
   const isFirst = !CONFIG.prestatie || CONFIG.conditie === 'beginner' || CONFIG.conditie === 'sub5';
-  const flagInstructie = `- Als iemand iets noemt dat relevant is voor toekomstige planning (blessure, pijn, ziekte, drukke periode op werk, vakantie, etc.), sla dit op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false} (gebruik dezelfde "tag" om een eerder punt te updaten/op te lossen door "opgelost": true te zetten). Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.`;
+  const flagInstructie = `- Als iemand iets noemt dat relevant is voor toekomstige planning (blessure, pijn, ziekte, drukke periode op werk, vakantie, etc.), sla dit op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false} (gebruik dezelfde "tag" om een eerder punt te updaten/op te lossen door "opgelost": true te zetten). De datum wordt automatisch toegevoegd — zet daarom NOOIT een dag van de week, "vandaag", "gisteren" of een andere relatieve tijdsaanduiding in "omschrijving" zelf (die wordt op den duur fout, want dezelfde dagnaam komt elke week terug). Schrijf objectief, bv. "buikgriep" niet "buikgriep was woensdag".
+- Bij elk gesprek: bekijk de bestaande AANDACHTSPUNTEN en hun "datum". Tijdelijke/acute punten (ziekte, eenmalige slechte nacht, een kortdurende blessure-vlaag e.d.) die qua aard allang voorbij hun eigen hersteltermijn zijn (bv. een omschrijving noemt "48u" en het is inmiddels >48u later, of het is een verkoudheid/griep van >1-2 weken geleden) MOET je automatisch op "opgelost": true zetten via een nieuwe FLAG_JSON met dezelfde tag — wacht niet tot de gebruiker dit zelf meldt. Structurele/blijvende punten (chronische blessuregeschiedenis, races, doelkeuzes) blijven gewoon staan.
+- Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.`;
   const approach = isFirst ? `
 # COACHFILOSOFIE EERSTE MARATHON
 - Blessurepreventie gaat boven alles. 10% opbouwregel wekelijks volume.
@@ -1384,7 +1386,7 @@ function getMemCtx() {
   if (MEM.macroplan) p.push('MACROPLAN:\n' + JSON.stringify(MEM.macroplan));
   if (MEM.weekplannen && MEM.weekplannen.length) p.push('RECENTE WEEKPLANNINGEN:\n' + JSON.stringify(MEM.weekplannen.slice(-3)));
   if (MEM.checkins && MEM.checkins.length) p.push('RECENTE CHECK-INS:\n' + JSON.stringify(MEM.checkins.slice(-4)));
-  if (MEM.flags && MEM.flags.length) p.push('AANDACHTSPUNTEN:\n' + JSON.stringify(MEM.flags));
+  if (MEM.flags && MEM.flags.length) p.push('AANDACHTSPUNTEN (bereken hoe lang geleden o.b.v. het "datum"-veld vs. de huidige datum hieronder — vertrouw nooit op dagnamen/relatieve tijd in de "omschrijving" zelf, die kan verouderd zijn):\n' + JSON.stringify(MEM.flags));
   return p.join('\n\n');
 }
 

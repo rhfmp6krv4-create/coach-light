@@ -1118,7 +1118,10 @@ async function analyzeStravaActivity(stravaId, datum) {
     SB_URL + '/functions/v1/analyze-activity-light?strava_id=' + stravaId + '&user_key=' + CONFIG.intervalsId,
     { headers: { 'Authorization': 'Bearer ' + SB_ANON } }
   );
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error('HTTP ' + res.status + (body.detail ? ' — ' + body.detail : ''));
+  }
   return await res.json();
 }
 

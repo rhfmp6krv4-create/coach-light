@@ -349,9 +349,12 @@ serve(async (req) => {
   );
 
   if (!streamsRes.ok) {
+    const streamErr = await streamsRes.text();
+    console.log("Strava streams fout:", streamsRes.status, streamErr);
     return new Response(
       JSON.stringify({
         error: "Strava streams niet beschikbaar",
+        detail: `HTTP ${streamsRes.status}: ${streamErr}`,
         strava_id: stravaId,
       }),
       {

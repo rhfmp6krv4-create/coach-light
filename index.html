@@ -699,6 +699,7 @@ body {
     <button class="qa-btn" onclick="quickSend('Genereer een gedetailleerd weekschema voor komende week op basis van mijn macroplan en huidige conditie.')">🗓 Weekschema</button>
     <button class="qa-btn" onclick="quickSend('Ben ik op schema voor mijn marathondoel? Geef een eerlijk antwoord op basis van mijn trainingsdata.')">🎯 Op schema?</button>
     <button class="qa-btn" onclick="quickSend('Wat zijn mijn grootste verbeterpunten op dit moment?')">💡 Verbeterpunten</button>
+    <button class="qa-btn" id="qa-strava" onclick="stravaAction()">🔗 Koppel Strava</button>
   </div>
 
   <div class="input-area">
@@ -890,6 +891,7 @@ function cleanActivity(a) {
     hr_max: a.max_heartrate != null ? Math.round(a.max_heartrate) : null,
     training_load: a.icu_training_load ?? null,
     hoogtemeters: a.total_elevation_gain != null ? Math.round(a.total_elevation_gain) : null,
+    strava_id: a.external_id && /^\d+$/.test(String(a.external_id)) ? String(a.external_id) : null,
   };
 }
 
@@ -1044,8 +1046,126 @@ Slaap/rust_hr/HRV/etc. zijn ondersteunende signalen, geen losse oordelen:
 - Bij twijfel: noem de metric niet, of benoem expliciet dat er te weinig data is om iets te concluderen.
 ${approach}${data}
 ${memCtx ? '\n\n# COACHGEHEUGEN (context uit eerdere gesprekken — gebruik dit voor planning/voorkeuren, NIET als bron voor "wat is er getraind", dat staat altijd in TRAININGSDATA hierboven)\n' + memCtx : ''}
+${pendingStravaAnalysis ? `\n\n# STRAVA INTERVALANALYSE — ${pendingStravaAnalysis.datum} (${pendingStravaAnalysis.naam})
+Dit zijn de per-seconde streamdata van Strava, verwerkt tot blokdetectie. Gebruik dit als primaire bron voor vragen over intervallen, hartslag per blok, drift en loopeconomie van deze training. De blokken zijn automatisch gedetecteerd op basis van snelheid (drempel: gem. tempo × 1,08, min. 3 minuten).
+${JSON.stringify(pendingStravaAnalysis.data, null, 2)}` : ''}
 
 Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}`;
+}
+
+// ── STRAVA ──
+const STRAVA_CLIENT_ID = '243959';
+let stravaCtx = null; // null | { connected: true, athlete_name: string }
+let pendingStravaAnalysis = null; // ingespoten vóór volgende Claude-call
+
+async function checkStravaConnection() {
+  if (!CONFIG.intervalsId) return;
+  try {
+    const r = await fetch(
+      SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + CONFIG.intervalsId + '&data_type=eq.strava_tokens&select=content',
+      { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } }
+    );
+    const rows = await r.json();
+    if (rows.length > 0) {
+      stravaCtx = { connected: true, athlete_name: rows[0].content?.athlete_name || 'Strava' };
+      updateStravaBtn();
+    }
+  } catch(e) { /* stil falen */ }
+}
+
+function connectStrava() {
+  const redirectUri = window.location.href.split('?')[0].split('#')[0];
+  const url = 'https://www.strava.com/oauth/authorize'
+    + '?client_id=' + STRAVA_CLIENT_ID
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&response_type=code'
+    + '&scope=activity:read_all'
+    + '&approval_prompt=force';
+  window.location.href = url;
+}
+
+async function handleStravaCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const error = params.get('error');
+  if (error || !code) {
+    window.history.replaceState({}, '', window.location.pathname);
+    return;
+  }
+  const redirectUri = window.location.href.split('?')[0].split('#')[0];
+  try {
+    const res = await fetch(SB_URL + '/functions/v1/strava-oauth-light', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_ANON },
+      body: JSON.stringify({ code, user_key: CONFIG.intervalsId, redirect_uri: redirectUri })
+    });
+    const data = await res.json();
+    if (data.success) {
+      stravaCtx = { connected: true, athlete_name: data.athlete_name || 'Strava' };
+      updateStravaBtn();
+      addMessage('assistant', '✅ Strava gekoppeld! Je kunt nu intervalanalyses opvragen via de knop hieronder.');
+    } else {
+      addMessage('assistant', '❌ Strava koppelen mislukt: ' + (data.error || 'onbekende fout'));
+    }
+  } catch(e) {
+    addMessage('assistant', '❌ Strava koppelen mislukt: ' + e.message);
+  }
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+async function analyzeStravaActivity(stravaId, datum) {
+  const res = await fetch(
+    SB_URL + '/functions/v1/analyze-activity-light?strava_id=' + stravaId + '&user_key=' + CONFIG.intervalsId,
+    { headers: { 'Authorization': 'Bearer ' + SB_ANON } }
+  );
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.json();
+}
+
+async function stravaAction() {
+  if (!stravaCtx?.connected) {
+    connectStrava();
+    return;
+  }
+  const recentStrava = (intervalsCtx?.activities || [])
+    .filter(a => a.external_id && /^\d+$/.test(String(a.external_id)))
+    .sort((a, b) => (b.start_date_local || '').localeCompare(a.start_date_local || ''))[0];
+
+  if (!recentStrava) {
+    addMessage('assistant', 'Geen recente Strava-activiteit gevonden. Zorg dat je runs gesynchroniseerd zijn vanuit Strava naar Intervals.icu.');
+    return;
+  }
+
+  const stravaId = String(recentStrava.external_id);
+  const datum = recentStrava.start_date_local?.split('T')[0] || 'onbekend';
+  const naam = recentStrava.name || 'training';
+
+  addTyping();
+  try {
+    const analyse = await analyzeStravaActivity(stravaId, datum);
+    document.getElementById('typing')?.remove();
+    if (analyse.error) {
+      addMessage('assistant', '❌ Kon de streams niet ophalen: ' + analyse.error);
+      return;
+    }
+    pendingStravaAnalysis = { datum, naam, data: analyse };
+    quickSend('Analyseer mijn intervaltraining van ' + datum + ' (' + naam + ').');
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    addMessage('assistant', '❌ Strava analyse mislukt: ' + e.message);
+  }
+}
+
+function updateStravaBtn() {
+  const btn = document.getElementById('qa-strava');
+  if (!btn) return;
+  if (stravaCtx?.connected) {
+    btn.textContent = '🏃 Intervalanalyse';
+    btn.title = 'Gekoppeld als ' + (stravaCtx.athlete_name || 'Strava');
+  } else {
+    btn.textContent = '🔗 Koppel Strava';
+    btn.title = 'Strava koppelen voor intervalanalyse';
+  }
 }
 
 // ── CHAT ──
@@ -1148,6 +1268,7 @@ async function submit() {
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
     const reply = data.content[0].text;
+    pendingStravaAnalysis = null;
     messages.push({ role: 'assistant', content: reply });
     parseCoachOutput(reply);
     document.getElementById('typing')?.remove();
@@ -1507,6 +1628,12 @@ async function init() {
     document.getElementById('header-sub').textContent = CONFIG.doel;
     await loadMem();
     fetchIntervalsData();
+    // Strava OAuth callback afhandelen (na redirect terug van Strava)
+    if (window.location.search.includes('code=')) {
+      await handleStravaCallback();
+    } else {
+      checkStravaConnection();
+    }
   }
 }
 init();

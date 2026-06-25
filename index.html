@@ -1105,7 +1105,7 @@ async function handleStravaCallback() {
       updateStravaBtn();
       addMessage('assistant', '✅ Strava gekoppeld! Je kunt nu intervalanalyses opvragen via de knop hieronder.');
     } else {
-      addMessage('assistant', '❌ Strava koppelen mislukt: ' + (data.error || 'onbekende fout'));
+      addMessage('assistant', '❌ Strava koppelen mislukt: ' + (data.error || 'onbekende fout') + (data.detail ? ' — ' + data.detail : ''));
     }
   } catch(e) {
     addMessage('assistant', '❌ Strava koppelen mislukt: ' + e.message);

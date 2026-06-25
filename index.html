@@ -1130,33 +1130,36 @@ async function stravaAction() {
     connectStrava();
     return;
   }
-  const recentStrava = (intervalsCtx?.activities || [])
-    .filter(a => a.external_id && /^\d+$/.test(String(a.external_id)))
-    .sort((a, b) => (b.start_date_local || '').localeCompare(a.start_date_local || ''))[0];
+  const candidates = (intervalsCtx?.activities || [])
+    .filter(a => a.external_id && /^\d{8,}$/.test(String(a.external_id)))
+    .sort((a, b) => (b.start_date_local || '').localeCompare(a.start_date_local || ''))
+    .slice(0, 5);
 
-  if (!recentStrava) {
+  if (!candidates.length) {
     addMessage('assistant', 'Geen recente Strava-activiteit gevonden. Zorg dat je runs gesynchroniseerd zijn vanuit Strava naar Intervals.icu.');
     return;
   }
 
-  const stravaId = String(recentStrava.external_id);
-  const datum = recentStrava.start_date_local?.split('T')[0] || 'onbekend';
-  const naam = recentStrava.name || 'training';
-
   addTyping();
-  try {
-    const analyse = await analyzeStravaActivity(stravaId, datum);
-    document.getElementById('typing')?.remove();
-    if (analyse.error) {
-      addMessage('assistant', '❌ Kon de streams niet ophalen: ' + analyse.error);
-      return;
-    }
-    pendingStravaAnalysis = { datum, naam, data: analyse };
-    quickSend('Analyseer mijn intervaltraining van ' + datum + ' (' + naam + ').');
-  } catch(e) {
-    document.getElementById('typing')?.remove();
-    addMessage('assistant', '❌ Strava analyse mislukt: ' + e.message + '\n\n(Activiteit: ' + naam + ' op ' + datum + ', strava_id: ' + stravaId + ')');
+  let analyse = null;
+  let gevonden = null;
+  for (const act of candidates) {
+    try {
+      analyse = await analyzeStravaActivity(String(act.external_id), act.start_date_local?.split('T')[0]);
+      if (!analyse.error) { gevonden = act; break; }
+    } catch(_) { /* probeer volgende */ }
   }
+  document.getElementById('typing')?.remove();
+
+  if (!gevonden || !analyse) {
+    addMessage('assistant', 'Kon geen van de laatste 5 activiteiten ophalen via Strava. Zijn ze gesynchroniseerd vanuit Strava?');
+    return;
+  }
+
+  const datum = gevonden.start_date_local?.split('T')[0] || 'onbekend';
+  const naam = gevonden.name || 'training';
+  pendingStravaAnalysis = { datum, naam, data: analyse };
+  quickSend('Analyseer mijn intervaltraining van ' + datum + ' (' + naam + ').');
 }
 
 function updateStravaBtn() {

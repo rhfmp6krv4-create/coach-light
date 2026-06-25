@@ -1163,7 +1163,7 @@ function updateStravaBtn() {
   const btn = document.getElementById('qa-strava');
   if (!btn) return;
   if (stravaCtx?.connected) {
-    btn.textContent = '🏃 Intervalanalyse';
+    btn.textContent = '🏃 Analyseer sessie';
     btn.title = 'Gekoppeld als ' + (stravaCtx.athlete_name || 'Strava');
   } else {
     btn.textContent = '🔗 Koppel Strava';

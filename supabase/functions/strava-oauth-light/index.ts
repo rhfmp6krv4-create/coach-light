@@ -25,8 +25,8 @@ serve(async (req) => {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: Deno.env.get("STRAVA_CLIENT_ID")!,
-      client_secret: Deno.env.get("STRAVA_CLIENT_SECRET")!,
+      client_id: Deno.env.get("STRAVA_CLIENT_ID_LIGHT")!,
+      client_secret: Deno.env.get("STRAVA_CLIENT_SECRET_LIGHT")!,
       code,
       grant_type: "authorization_code",
       redirect_uri,

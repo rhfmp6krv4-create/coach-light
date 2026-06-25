@@ -1155,7 +1155,7 @@ async function stravaAction() {
     quickSend('Analyseer mijn intervaltraining van ' + datum + ' (' + naam + ').');
   } catch(e) {
     document.getElementById('typing')?.remove();
-    addMessage('assistant', '❌ Strava analyse mislukt: ' + e.message);
+    addMessage('assistant', '❌ Strava analyse mislukt: ' + e.message + '\n\n(Activiteit: ' + naam + ' op ' + datum + ', strava_id: ' + stravaId + ')');
   }
 }
 

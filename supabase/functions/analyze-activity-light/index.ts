@@ -311,12 +311,12 @@ serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  const stravaId = url.searchParams.get("strava_id");
+  let stravaId = url.searchParams.get("strava_id");
   const userKey = url.searchParams.get("user_key");
 
-  if (!stravaId || !userKey) {
+  if (!userKey) {
     return new Response(
-      JSON.stringify({ error: "strava_id en user_key zijn verplicht" }),
+      JSON.stringify({ error: "user_key is verplicht" }),
       {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -340,6 +340,36 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
+  }
+
+  let activityName: string | null = null;
+  let activityDate: string | null = null;
+
+  // Als geen strava_id meegegeven: haal recente run op via Strava
+  if (!stravaId) {
+    const activitiesRes = await fetch(
+      "https://www.strava.com/api/v3/athlete/activities?per_page=10&page=1",
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!activitiesRes.ok) {
+      return new Response(
+        JSON.stringify({ error: "Kon Strava-activiteiten niet ophalen", detail: await activitiesRes.text() }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const activities = await activitiesRes.json();
+    const run = activities.find((a: { type: string; sport_type: string; id: number; name: string; start_date: string }) =>
+      a.type === "Run" || a.sport_type === "Run"
+    );
+    if (!run) {
+      return new Response(
+        JSON.stringify({ error: "Geen recente hardloopsessie gevonden op Strava" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    stravaId = String(run.id);
+    activityName = run.name;
+    activityDate = run.start_date;
   }
 
   const streamsRes = await fetch(
@@ -394,6 +424,8 @@ serve(async (req) => {
   return new Response(
     JSON.stringify({
       strava_id: stravaId,
+      activity_name: activityName,
+      start_date: activityDate,
       overall: {
         ...overall,
         cardiac_drift_interpretatie: driftLabel(overall.cardiac_drift_pct, true),

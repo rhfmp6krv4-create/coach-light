@@ -14,6 +14,9 @@ serve(async (req) => {
 
   const { code, user_key, redirect_uri } = await req.json();
 
+  console.log("strava-oauth-light aangeroepen", { user_key, redirect_uri, code_length: code?.length });
+  console.log("client_id gebruikt:", Deno.env.get("STRAVA_CLIENT_ID_LIGHT") ?? "NIET GEVONDEN");
+
   if (!code || !user_key || !redirect_uri) {
     return new Response(
       JSON.stringify({ error: "code, user_key en redirect_uri zijn verplicht" }),
@@ -35,6 +38,7 @@ serve(async (req) => {
 
   if (!tokenRes.ok) {
     const detail = await tokenRes.text();
+    console.log("Strava exchange mislukt:", tokenRes.status, detail);
     return new Response(
       JSON.stringify({ error: "Strava token exchange mislukt", detail }),
       { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }

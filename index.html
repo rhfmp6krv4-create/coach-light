@@ -1149,6 +1149,17 @@ async function stravaAction() {
   const datum = analyse.start_date?.split('T')[0] || 'onbekend';
   const naam = analyse.activity_name || 'training';
   pendingStravaAnalysis = { datum, naam, data: analyse };
+  const nBlokken = analyse.blokken?.length ?? 0;
+  const hrGem = analyse.overall?.avg_hr ? Math.round(analyse.overall.avg_hr) : null;
+  const pace = analyse.overall?.avg_pace_min_km;
+  const dp = analyse.overall?.data_points ?? 0;
+  const debugInfo = [
+    `${nBlokken} blok${nBlokken !== 1 ? 'ken' : ''}`,
+    hrGem ? `HF gem. ${hrGem} bpm` : null,
+    pace && pace !== '--' ? `tempo ${pace}/km` : null,
+    dp ? `${dp} datapunten` : null,
+  ].filter(Boolean).join(' · ');
+  addMessage('assistant', `📊 Strava: ${naam} (${datum}) — ${debugInfo}`);
   quickSend('Analyseer mijn laatste training van ' + datum + ' (' + naam + ').');
 }
 

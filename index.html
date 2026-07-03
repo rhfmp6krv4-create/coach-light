@@ -1013,7 +1013,8 @@ ${activitiesJson}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
   const isFirst = !CONFIG.prestatie || CONFIG.conditie === 'beginner' || CONFIG.conditie === 'sub5';
   const flagInstructie = `- Als iemand iets noemt dat relevant is voor toekomstige planning (blessure, pijn, ziekte, drukke periode op werk, vakantie, etc.), sla dit op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false} (gebruik dezelfde "tag" om een eerder punt te updaten/op te lossen door "opgelost": true te zetten). De datum wordt automatisch toegevoegd — zet daarom NOOIT een dag van de week, "vandaag", "gisteren" of een andere relatieve tijdsaanduiding in "omschrijving" zelf (die wordt op den duur fout, want dezelfde dagnaam komt elke week terug). Schrijf objectief, bv. "buikgriep" niet "buikgriep was woensdag".
 - Bij elk gesprek: bekijk de bestaande AANDACHTSPUNTEN en hun "datum". Tijdelijke/acute punten (ziekte, eenmalige slechte nacht, een kortdurende blessure-vlaag e.d.) die qua aard allang voorbij hun eigen hersteltermijn zijn (bv. een omschrijving noemt "48u" en het is inmiddels >48u later, of het is een verkoudheid/griep van >1-2 weken geleden) MOET je automatisch op "opgelost": true zetten via een nieuwe FLAG_JSON met dezelfde tag — wacht niet tot de gebruiker dit zelf meldt. Structurele/blijvende punten (chronische blessuregeschiedenis, races, doelkeuzes) blijven gewoon staan.
-- Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.`;
+- Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.
+- Als er nieuwe empirische data beschikbaar is om hartslagzones te verfijnen (bijv. uit Strava streams of een test), sla de bijgewerkte zones op als ZONES_JSON: { "bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [ { "zone": "Z1", "naam": "...", "hr_max": N, "tempo_min_km": "M:SS" }, ... ], "notitie": "..." }. Gebruik daarna ALTIJD de HARTSLAGZONES uit het coachgeheugen — NOOIT generieke tabellen.`;
   const approach = isFirst ? `
 # COACHFILOSOFIE EERSTE MARATHON
 - Blessurepreventie gaat boven alles. 10% opbouwregel wekelijks volume.
@@ -1526,7 +1527,7 @@ async function syncLoadAll() {
 }
 
 // ── MEMORY ──
-let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [] };
+let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [], zones: null };
 
 async function saveMem(type, data) {
   MEM[type] = data;
@@ -1546,7 +1547,7 @@ async function loadMem() {
       // Nog geen cloud-profiel — dit is de eerste keer, dus opslaan
       syncSave('profile', CONFIG);
     }
-    ['macroplan','weekplannen','checkins','flags'].forEach(t => { if (cloud['mem_' + t]) MEM[t] = cloud['mem_' + t]; });
+    ['macroplan','weekplannen','checkins','flags','zones'].forEach(t => { if (cloud['mem_' + t]) MEM[t] = cloud['mem_' + t]; });
     if (cloud.chat_history?.messages?.length) {
       messages = cloud.chat_history.messages;
       messages.forEach(m => addMessage(m.role, m.content));
@@ -1554,8 +1555,24 @@ async function loadMem() {
     if (cloud.strava_analysis?.datum) {
       stravaAnalysis = cloud.strava_analysis;
     }
+    // Sla empirisch bepaalde zones op als startpunt als er nog geen zijn
+    if (!MEM.zones) {
+      const startZones = {
+        bron: "Afgeleid uit 6x1km intervaltraining op 2026-07-03",
+        calibratie_datum: "2026-07-03",
+        zones: [
+          { zone: "Z1", naam: "Recovery", hr_max: 125, tempo_min_km: "6:30" },
+          { zone: "Z2", naam: "Aerobic basis", hr_min: 125, hr_max: 142, tempo_min_km: "5:45", tempo_max_km: "6:30" },
+          { zone: "Z3", naam: "Marathon-tempo", hr_min: 142, hr_max: 152, tempo_min_km: "5:00", tempo_max_km: "5:45" },
+          { zone: "Z4", naam: "Drempel", hr_min: 152, hr_max: 162, tempo_min_km: "4:30", tempo_max_km: "5:00" },
+          { zone: "Z5", naam: "VO2max", hr_min: 162, tempo_max_km: "4:30" }
+        ],
+        notitie: "Z2/Z3 grens geïnterpoleerd — verfijnen na steady-state run op 5:30-6:00/km"
+      };
+      saveMem('zones', startZones);
+    }
   } else {
-    ['macroplan','weekplannen','checkins','flags'].forEach(t => { try { const s = localStorage.getItem('cl-mem-' + t); if (s) MEM[t] = JSON.parse(s); } catch(e) {} });
+    ['macroplan','weekplannen','checkins','flags','zones'].forEach(t => { try { const s = localStorage.getItem('cl-mem-' + t); if (s) MEM[t] = JSON.parse(s); } catch(e) {} });
   }
 }
 
@@ -1565,6 +1582,7 @@ function getMemCtx() {
   if (MEM.weekplannen && MEM.weekplannen.length) p.push('RECENTE WEEKPLANNINGEN:\n' + JSON.stringify(MEM.weekplannen.slice(-3)));
   if (MEM.checkins && MEM.checkins.length) p.push('RECENTE CHECK-INS:\n' + JSON.stringify(MEM.checkins.slice(-4)));
   if (MEM.flags && MEM.flags.length) p.push('AANDACHTSPUNTEN (bereken hoe lang geleden o.b.v. het "datum"-veld vs. de huidige datum hieronder — vertrouw nooit op dagnamen/relatieve tijd in de "omschrijving" zelf, die kan verouderd zijn):\n' + JSON.stringify(MEM.flags));
+  if (MEM.zones) p.push('HARTSLAGZONES (empirisch bepaald uit trainingsdata — gebruik ALTIJD deze tabel voor tempo- en zone-adviezen, nooit generieke richtlijnen):\n' + JSON.stringify(MEM.zones));
   return p.join('\n\n');
 }
 
@@ -1601,6 +1619,12 @@ function parseCoachOutput(text) {
         plannen.push({ datum: new Date().toISOString().split('T')[0], plan: JSON.parse(j) });
         saveMem('weekplannen', plannen.slice(-12));
       } catch(e) { console.warn('weekplan parse error:', e); }
+    }
+  }
+  if (text.includes('ZONES_JSON:')) {
+    const j = extractJsonBlock(text, 'ZONES_JSON:');
+    if (j) {
+      try { saveMem('zones', JSON.parse(j)); } catch(e) { console.warn('zones parse error:', e); }
     }
   }
   if (text.includes('FLAG_JSON:')) {

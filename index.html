@@ -1081,6 +1081,17 @@ async function checkStravaConnection() {
     if (rows.length > 0) {
       stravaCtx = { connected: true, athlete_name: rows[0].content?.athlete_name || 'Strava' };
       updateStravaBtn();
+      // Auto-fetch analyse op achtergrond als nog niet geladen
+      if (!stravaAnalysis) {
+        analyzeStravaActivity().then(analyse => {
+          if (!analyse.error) {
+            const datum = analyse.start_date?.split('T')[0] || 'onbekend';
+            const naam = analyse.activity_name || 'training';
+            stravaAnalysis = { datum, naam, data: analyse };
+            syncSave('strava_analysis', stravaAnalysis);
+          }
+        }).catch(() => {});
+      }
     }
   } catch(e) { /* stil falen */ }
 }

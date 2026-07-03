@@ -304,6 +304,78 @@ function overallStats(streams: StravaStreams) {
   };
 }
 
+// ── PACE-HR CORRELATIE ──
+// Buckets in m/s (velocity_smooth is m/s)
+const PACE_BUCKETS = [
+  { label: "<4:30/km", minV: 3.70, maxV: 99 },
+  { label: "4:30–5:00/km", minV: 3.33, maxV: 3.70 },
+  { label: "5:00–5:30/km", minV: 3.03, maxV: 3.33 },
+  { label: "5:30–6:00/km", minV: 2.78, maxV: 3.03 },
+  { label: "6:00–6:30/km", minV: 2.56, maxV: 2.78 },
+  { label: ">6:30/km",     minV: 0.5,  maxV: 2.56 },
+];
+
+function paceHrCorrelatie(pairs: { v: number; hr: number }[]) {
+  return PACE_BUCKETS.map(b => {
+    const p = pairs.filter(x => x.v >= b.minV && x.v < b.maxV && x.hr > 40);
+    if (p.length < 20) return null;
+    return { tempo: b.label, avg_hr: round(avg(p.map(x => x.hr)), 1), datapunten: p.length };
+  }).filter(Boolean);
+}
+
+// ── STREAMS OPHALEN ──
+async function fetchStreams(stravaId: string, token: string): Promise<StravaStreams | null> {
+  const res = await fetch(
+    `https://www.strava.com/api/v3/activities/${stravaId}/streams` +
+      `?keys=heartrate,velocity_smooth,cadence,distance,altitude,time,ground_contact_time,vertical_oscillation,stride_length&key_by_type=true`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) return null;
+  return await res.json();
+}
+
+// ── SESSIE SAMENVATTEN ──
+function formatSessie(id: string, naam: string, datum: string, streams: StravaStreams) {
+  const overall = overallStats(streams);
+  const blocks = detectBlocks(streams);
+
+  const driftLabel = (pct: number | null, prog = false) => {
+    if (pct === null) return "onvoldoende data";
+    if (prog && overall.is_progressive_session) return "niet bruikbaar — progressieve training";
+    if (pct < 3) return "uitstekend";
+    if (pct < 5) return "goed";
+    if (pct < 8) return "matig";
+    if (pct < 12) return "hoog";
+    return "zeer hoog";
+  };
+
+  return {
+    strava_id: id,
+    naam,
+    datum: datum.split("T")[0],
+    overall: {
+      ...overall,
+      cardiac_drift_interpretatie: driftLabel(overall.cardiac_drift_pct, true),
+      aerobic_decoupling_interpretatie: overall.aerobic_decoupling === null
+        ? "onvoldoende data"
+        : overall.aerobic_decoupling < 5 ? "HR en pace goed gekoppeld"
+        : overall.aerobic_decoupling < 8 ? "lichte ontkoppeling"
+        : "duidelijke ontkoppeling",
+    },
+    blokken: blocks.map((b, i) => ({
+      blok: i + 1,
+      ...b,
+      duur_min: round(b.duration_sec / 60, 1),
+      afstand_km: round(b.distance_m / 1000, 2),
+      cardiac_drift_interpretatie: driftLabel(b.cardiac_drift_pct),
+    })),
+    samenvatting: {
+      aantal_blokken: blocks.length,
+      totale_blok_tijd_min: round(blocks.reduce((s, b) => s + b.duration_sec, 0) / 60, 1),
+    },
+  };
+}
+
 // ── MAIN ──
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -311,16 +383,13 @@ serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  let stravaId = url.searchParams.get("strava_id");
+  const stravaId = url.searchParams.get("strava_id");
   const userKey = url.searchParams.get("user_key");
 
   if (!userKey) {
     return new Response(
       JSON.stringify({ error: "user_key is verplicht" }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
@@ -335,132 +404,88 @@ serve(async (req) => {
   } catch (e) {
     return new Response(
       JSON.stringify({ error: (e as Error).message }),
-      {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  let activityName: string | null = null;
-  let activityDate: string | null = null;
-
-  // Als geen strava_id meegegeven: haal recente run op via Strava
-  if (!stravaId) {
-    const activitiesRes = await fetch(
-      "https://www.strava.com/api/v3/athlete/activities?per_page=10&page=1",
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!activitiesRes.ok) {
+  // Enkelvoudige activiteit
+  if (stravaId) {
+    const streams = await fetchStreams(stravaId, token);
+    if (!streams) {
       return new Response(
-        JSON.stringify({ error: "Kon Strava-activiteiten niet ophalen", detail: await activitiesRes.text() }),
+        JSON.stringify({ error: "Strava streams niet beschikbaar", strava_id: stravaId }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const activities = await activitiesRes.json();
-    const run = activities.find((a: { type: string; sport_type: string; id: number; name: string; start_date: string }) =>
-      a.type === "Run" || a.sport_type === "Run"
+    const sessie = formatSessie(stravaId, "Activiteit", new Date().toISOString(), streams);
+    return new Response(
+      JSON.stringify({ activity_name: sessie.naam, start_date: sessie.datum, ...sessie }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-    if (!run) {
-      return new Response(
-        JSON.stringify({ error: "Geen recente hardloopsessie gevonden op Strava" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    stravaId = String(run.id);
-    activityName = run.name;
-    activityDate = run.start_date;
   }
 
-  const streamsRes = await fetch(
-    `https://www.strava.com/api/v3/activities/${stravaId}/streams` +
-      `?keys=heartrate,velocity_smooth,cadence,distance,altitude,time,ground_contact_time,vertical_oscillation,stride_length&key_by_type=true`,
+  // Multi-sessie: haal laatste 3 runs op
+  const activitiesRes = await fetch(
+    "https://www.strava.com/api/v3/athlete/activities?per_page=15&page=1",
     { headers: { Authorization: `Bearer ${token}` } }
   );
-
-  if (!streamsRes.ok) {
-    const streamErr = await streamsRes.text();
-    console.log("Strava streams fout:", streamsRes.status, streamErr);
+  if (!activitiesRes.ok) {
     return new Response(
-      JSON.stringify({
-        error: "Strava streams niet beschikbaar",
-        detail: `HTTP ${streamsRes.status}: ${streamErr}`,
-        strava_id: stravaId,
-      }),
-      {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: "Kon Strava-activiteiten niet ophalen", detail: await activitiesRes.text() }),
+      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const streams: StravaStreams = await streamsRes.json();
-  const overall = overallStats(streams);
-  const blocks = detectBlocks(streams);
+  const activities = await activitiesRes.json();
+  type StravaActivity = { type: string; sport_type: string; id: number; name: string; start_date: string };
+  const runs: StravaActivity[] = activities
+    .filter((a: StravaActivity) => a.type === "Run" || a.sport_type === "Run")
+    .slice(0, 3);
 
-  const driftLabel = (pct: number | null, isOverall = false) => {
-    if (pct === null) return "onvoldoende data";
-    if (
-      isOverall &&
-      overall.is_progressive_session
-    )
-      return "niet bruikbaar — progressieve training gedetecteerd";
-    if (pct < 3) return "uitstekend — cardiovasculair stabiel";
-    if (pct < 5) return "goed — aerobisch efficiënt";
-    if (pct < 8) return "matig — lichte cardiovasculaire vermoeidheid";
-    if (pct < 12) return "hoog — mogelijke vermoeidheid of progressieve opbouw";
-    return "zeer hoog — controleer of dit overbelasting was";
-  };
+  if (runs.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "Geen recente hardloopsessies gevonden op Strava" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
-  const decouplingLabel = (pct: number | null) => {
-    if (pct === null) return "onvoldoende data";
-    if (overall.is_progressive_session)
-      return "niet bruikbaar — progressieve training gedetecteerd";
-    if (pct < 5) return "HR en pace goed gekoppeld";
-    if (pct < 8) return "lichte ontkoppeling zichtbaar";
-    return "duidelijke ontkoppeling — HR stijgt zonder pace-daling";
-  };
+  // Streams parallel ophalen
+  const streamsPerRun = await Promise.all(
+    runs.map(r => fetchStreams(String(r.id), token))
+  );
+
+  const sessies = runs
+    .map((r, i) => {
+      const s = streamsPerRun[i];
+      if (!s) return null;
+      return formatSessie(String(r.id), r.name, r.start_date, s);
+    })
+    .filter(Boolean);
+
+  // Gecombineerde pace-HR correlatie over alle sessies
+  const allPairs: { v: number; hr: number }[] = [];
+  streamsPerRun.forEach(s => {
+    if (!s?.velocity_smooth?.data || !s?.heartrate?.data) return;
+    const vel = s.velocity_smooth.data;
+    const hr = s.heartrate.data;
+    const len = Math.min(vel.length, hr.length);
+    for (let i = 0; i < len; i++) {
+      if (vel[i] > 0.5) allPairs.push({ v: vel[i], hr: hr[i] });
+    }
+  });
+
+  const meestRecente = sessies[0];
 
   return new Response(
     JSON.stringify({
-      strava_id: stravaId,
-      activity_name: activityName,
-      start_date: activityDate,
-      overall: {
-        ...overall,
-        cardiac_drift_interpretatie: driftLabel(overall.cardiac_drift_pct, true),
-        aerobic_decoupling_interpretatie: decouplingLabel(
-          overall.aerobic_decoupling
-        ),
-        overall_drift_context: overall.is_progressive_session
-          ? "Progressieve training gedetecteerd. Analyseer de blok-specifieke drift."
-          : "Constante training. Overall cardiac drift is bruikbaar als kwaliteitsindicator.",
-      },
-      blokken: blocks.map((b, i) => ({
-        blok: i + 1,
-        ...b,
-        duur_min: round(b.duration_sec / 60, 1),
-        afstand_km: round(b.distance_m / 1000, 2),
-        cardiac_drift_interpretatie: driftLabel(b.cardiac_drift_pct),
-      })),
-      samenvatting: {
-        aantal_blokken: blocks.length,
-        totale_blok_tijd_min: round(
-          blocks.reduce((s, b) => s + b.duration_sec, 0) / 60,
-          1
-        ),
-        totale_blok_afstand_km: round(
-          blocks.reduce((s, b) => s + b.distance_m, 0) / 1000,
-          2
-        ),
-        intensiefste_blok: blocks.length
-          ? `blok ${
-              blocks.indexOf(
-                blocks.reduce((a, b) => (a.avg_hr > b.avg_hr ? a : b))
-              ) + 1
-            }`
-          : null,
-      },
+      activity_name: runs[0].name,
+      start_date: runs[0].start_date,
+      sessies,
+      pace_hr_correlatie: paceHrCorrelatie(allPairs),
+      // Backward compat: meest recente sessie ook op top-level
+      overall: meestRecente?.overall,
+      blokken: meestRecente?.blokken,
+      samenvatting: meestRecente?.samenvatting,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );

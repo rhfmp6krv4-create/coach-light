@@ -115,9 +115,9 @@ async function getStravaToken(
 }
 
 // ── BLOCK DETECTION ──
-const THRESHOLD_FACTOR = 1.08;
-const MIN_BLOCK_SEC = 180;
-const GAP_TOLERANCE = 15;
+const THRESHOLD_FACTOR = 1.05;
+const MIN_BLOCK_SEC = 60;
+const GAP_TOLERANCE = 20;
 
 function detectBlocks(streams: StravaStreams): Block[] {
   const velocity = streams.velocity_smooth?.data;

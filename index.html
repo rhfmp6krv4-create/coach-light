@@ -305,6 +305,17 @@ body {
   outline: none;
 }
 .model-select:hover { border-color: var(--ink-3); }
+.clear-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+}
+.clear-btn:hover { border-color: var(--ink-3); color: var(--ink-2); }
 
 .messages {
   flex: 1;
@@ -646,6 +657,7 @@ body {
       <div class="header-sub" id="header-sub">Laden...</div>
     </div>
     <div class="header-right">
+      <button class="clear-btn" id="clear-btn" title="Gesprek wissen" onclick="clearHistory()">✕ Nieuw</button>
       <select class="model-select" id="model-select">
         <option value="claude-haiku-4-5-20251001" selected>Haiku</option>
         <option value="claude-sonnet-4-6">Sonnet</option>
@@ -1177,6 +1189,18 @@ function updateStravaBtn() {
 
 // ── CHAT ──
 let messages = [], isLoading = false;
+
+function clearHistory() {
+  if (!confirm('Gesprek wissen?')) return;
+  messages = [];
+  const uur = new Date().getHours();
+  const groet = uur < 12 ? 'Goedemorgen' : uur < 18 ? 'Goedemiddag' : 'Goedenavond';
+  messagesEl.innerHTML = `<div class="welcome" id="welcome">
+    <div class="welcome-title" id="welcome-title">${groet} ${CONFIG.naam} 👋</div>
+    <div class="welcome-sub">Stel een vraag of gebruik een snelknop hieronder om te beginnen.</div>
+  </div>`;
+  syncSave('chat_history', { messages: [] });
+}
 const messagesEl = document.getElementById('messages');
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
@@ -1280,6 +1304,7 @@ async function submit() {
     parseCoachOutput(reply);
     document.getElementById('typing')?.remove();
     addMessage('assistant', reply);
+    syncSave('chat_history', { messages: messages.slice(-60) });
   } catch(e) {
     document.getElementById('typing')?.remove();
     addMessage('assistant', '❌ ' + e.message);
@@ -1504,6 +1529,10 @@ async function loadMem() {
       syncSave('profile', CONFIG);
     }
     ['macroplan','weekplannen','checkins','flags'].forEach(t => { if (cloud['mem_' + t]) MEM[t] = cloud['mem_' + t]; });
+    if (cloud.chat_history?.messages?.length) {
+      messages = cloud.chat_history.messages;
+      messages.forEach(m => addMessage(m.role, m.content));
+    }
   } else {
     ['macroplan','weekplannen','checkins','flags'].forEach(t => { try { const s = localStorage.getItem('cl-mem-' + t); if (s) MEM[t] = JSON.parse(s); } catch(e) {} });
   }

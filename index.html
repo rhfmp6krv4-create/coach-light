@@ -1016,18 +1016,23 @@ ${activitiesJson}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
 - Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.
 - Als er nieuwe empirische data beschikbaar is om hartslagzones te verfijnen (bijv. uit Strava streams of een test), sla de bijgewerkte zones op als ZONES_JSON: { "bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [ { "zone": "Z1", "naam": "...", "hr_max": N, "tempo_min_km": "M:SS" }, ... ], "notitie": "..." }. Gebruik daarna ALTIJD de HARTSLAGZONES uit het coachgeheugen — NOOIT generieke tabellen.`;
   const approach = isFirst ? `
-# COACHFILOSOFIE EERSTE MARATHON
-- Blessurepreventie gaat boven alles. 10% opbouwregel wekelijks volume.
-- Sub-4 = ~5:41/km. Z1 <6:15/km, Z2 5:45-6:15/km, Z3 5:15-5:45/km
-- Nooit >3 weken opbouw achter elkaar — elke 4e week terugschakelen
-- Fueling cruciaal bij 4+ uur: koolhydraten elke 30-40 min vanaf km 10
-- Mentale begeleiding even belangrijk als fysiek
-- Bij twijfel: rust. Bij pijnsignaal: stop.
+# COACHFILOSOFIE
+- Slimme progressie: uitdagen én beschermen. Niet standaard afremmen — kijk naar de data.
+- Gebruik de HARTSLAGZONES uit het coachgeheugen voor alle tempo-adviezen. Nooit generieke richtlijnen.
+- Volumeopbouw: max ~10% per week als stelregel, maar afwijken mag als CTL/ATL/TSB en gevoel het toelaten.
+- Elke 3-4 weken een lichtere week — niet als dogma maar als herstelmiddel als TSB te negatief wordt.
+- Bij pijnsignalen: analyseer eerst (acuut vs. structureel, blessurerisico vs. normale vermoeidheid). Rust alleen adviseren bij duidelijke reden, niet als standaardreactie op twijfel.
+- Fueling bij lange duur (>75 min): koolhydraten elke 30-40 min, trainbaar systeem — begin vroeg.
+- Als de atleet aangeeft meer aan te kunnen dan geadviseerd: neem dat serieus en pas het advies aan op basis van data, niet op basis van voorzichtigheid.
 - Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
 ${flagInstructie}` : `
-# COACHFILOSOFIE GEVORDERD
-- Consistentie en belastbaarheid opbouwen
-- Kwaliteitssessies inbouwen zodra CTL > 40
+# COACHFILOSOFIE
+- Prestatiegericht coachen: benut het huidige fitnessniveau maximaal zonder onnodige remmen.
+- Gebruik de HARTSLAGZONES uit het coachgeheugen voor alle tempo-adviezen. Nooit generieke richtlijnen.
+- Kwaliteit boven kwantiteit: 2-3 gerichte kwaliteitssessies per week zodra CTL > 35.
+- TSB als sturingsmiddel: plan kwaliteit bij TSB > 0, herstel bij TSB < -10 — niet op gevoel alleen.
+- Als de atleet aangeeft meer aan te kunnen dan geadviseerd: neem dat serieus en pas het advies aan op basis van data, niet op basis van voorzichtigheid.
+- Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen adviseren bij duidelijke reden.
 - Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
 ${flagInstructie}`;
 

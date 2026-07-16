@@ -1691,6 +1691,8 @@ function loadFromURL() {
   if (p.get('blessure')) CONFIG.blessure = p.get('blessure');
   if (p.get('werk')) CONFIG.werk = p.get('werk');
   if (p.get('agenda')) CONFIG.agenda = p.get('agenda');
+  if (p.get('conditie')) CONFIG.conditie = p.get('conditie');
+  if (p.get('tijd')) CONFIG.tijd = p.get('tijd');
   CONFIG.claudeKey = 'sk-ant-api03-sRhLh0vl0Oz4VK3UmOrI4PcZNdrDg1IfqL6yOwevsDpbQP_D8X49QYlpwiZnGKln_oiJHQTYxAl6BCcgQ-ncfmlQAA';
   if (CONFIG.intervalsId && CONFIG.intervalsKey && CONFIG.naam) {
     // Niet direct naar Supabase pushen — alleen lokaal opslaan.
@@ -1713,6 +1715,18 @@ async function init() {
     document.getElementById('welcome-title').textContent = groet + ' ' + CONFIG.naam + ' 👋';
     document.getElementById('header-sub').textContent = CONFIG.doel;
     await loadMem();
+    // URL-params overschrijven cloud-profiel als ze expliciet meegegeven zijn
+    if (fromURL) {
+      const p = new URLSearchParams(window.location.search);
+      const overrides = {};
+      if (p.get('conditie')) overrides.conditie = p.get('conditie');
+      if (p.get('prestatie')) overrides.prestatie = p.get('prestatie');
+      if (p.get('doel')) overrides.doel = p.get('doel');
+      if (Object.keys(overrides).length) {
+        CONFIG = { ...CONFIG, ...overrides };
+        syncSave('profile', CONFIG);
+      }
+    }
     fetchIntervalsData();
     // Strava OAuth callback afhandelen (na redirect terug van Strava)
     if (window.location.search.includes('code=')) {

@@ -887,13 +887,24 @@ function stripNulls(arr) {
   });
 }
 
+// Datum-string "YYYY-MM-DD" of "YYYY-MM-DDTHH:MM:SS" → dagnaam in het Nederlands,
+// zonder timezone-ambiguïteit: we lezen de datum-component letterlijk uit de string.
+function dagVanDatum(str) {
+  if (!str) return null;
+  const [y, m, d] = str.split('T')[0].split('-').map(Number);
+  const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  // Gebruik Date.UTC zodat de dag altijd obv de datum-string zelf wordt bepaald,
+  // ongeacht de lokale tijdzone van de browser.
+  return dagen[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
 // Bouw een schone, vaste set velden per activiteit — zelfde principe als de
 // 'trainingen'-array die Coach Rob via coach-context krijgt: simpele namen,
 // leesbare eenheden (km, minuten), geen geneste lap/interval-structuren die
 // het tekenbudget opslokken.
 function cleanActivity(a) {
   return {
-    dag: a.start_date_local ? new Date(a.start_date_local).toLocaleDateString('nl-NL', { weekday: 'long' }) : null,
+    dag: dagVanDatum(a.start_date_local),
     datum: a.start_date_local ? a.start_date_local.split('T')[0] : null,
     type: a.type ?? null,
     naam: a.name ?? null,
@@ -910,7 +921,7 @@ function cleanActivity(a) {
 // Zelfde principe voor wellness-dagen.
 function cleanWellness(w) {
   return {
-    dag: w.id ? new Date(w.id).toLocaleDateString('nl-NL', { weekday: 'long' }) : null,
+    dag: dagVanDatum(w.id),
     datum: w.id ?? null,
     ctl: w.ctl != null ? Math.round(w.ctl * 10) / 10 : null,
     atl: w.atl != null ? Math.round(w.atl * 10) / 10 : null,
@@ -1075,7 +1086,24 @@ KRITISCHE INSTRUCTIE voor zone/tempo vragen:
 
 ${JSON.stringify(stravaAnalysis.data, null, 2)}` : ''}
 
-Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}`;
+Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+${(() => {
+  const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  const today = new Date();
+  // Maandag als weekstart (0=ma, 6=zo)
+  const dow = (today.getDay() + 6) % 7; // 0=ma, 1=di, ..., 6=zo
+  const weekLines = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - dow + i);
+    const dagNaam = dagen[(d.getDay())];
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    weekLines.push(dagNaam + ' ' + dd + '-' + mm + '-' + d.getFullYear());
+  }
+  return 'Huidige week:\n' + weekLines.join('\n');
+})()}
+KALENDERREGEL: Gebruik bovenstaande datums voor alle dag-naar-datum verwijzingen in weekplannen en schema's. Reken NOOIT zelf dag-naar-datum uit — gebruik altijd de tabel hierboven.`;
 }
 
 // ── STRAVA ──

@@ -875,6 +875,82 @@ async function fetchIntervalsData() {
 }
 
 // ── SYSTEM PROMPT ──
+
+// Reken uit welk tempo bij een gegeven HR past, via interpolatie op de pace-HR correlatie.
+// Geeft { marathonTempo, marathonTijd, drempelTempo, rustigTempo } of null als er te weinig data is.
+function computeTempoInzicht(corrData, zones) {
+  if (!corrData || corrData.length < 2) return null;
+
+  // Middenpunt (seconden/km) per bucket-label uit de edge function
+  const BUCKET_SEC = {
+    '<4:30/km':       255,
+    '4:30–5:00/km': 285,
+    '5:00–5:30/km': 315,
+    '5:30–6:00/km': 345,
+    '6:00–6:30/km': 375,
+    '>6:30/km':       415,
+  };
+
+  const points = corrData
+    .filter(b => b.avg_hr && b.count >= 20 && BUCKET_SEC[b.label] != null)
+    .map(b => ({ hr: b.avg_hr, sec: BUCKET_SEC[b.label] }))
+    .sort((a, b) => a.hr - b.hr);
+
+  if (points.length < 2) return null;
+
+  function interpoleer(targetHR) {
+    if (targetHR <= points[0].hr) return null;
+    if (targetHR >= points[points.length - 1].hr) return null;
+    for (let i = 0; i < points.length - 1; i++) {
+      const lo = points[i], hi = points[i + 1];
+      if (targetHR >= lo.hr && targetHR <= hi.hr) {
+        const t = (targetHR - lo.hr) / (hi.hr - lo.hr);
+        return lo.sec + t * (hi.sec - lo.sec);
+      }
+    }
+    return null;
+  }
+
+  function fmtPace(sec) {
+    if (!sec) return null;
+    return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+  }
+
+  function fmtMarathon(sec) {
+    if (!sec) return null;
+    const total = sec * 42.195;
+    const h = Math.floor(total / 3600);
+    const m = Math.round((total % 3600) / 60);
+    return `${h}u${String(m).padStart(2, '0')}`;
+  }
+
+  const zoneList = zones?.zones || [];
+  const z2 = zoneList.find(z => z.zone === 'Z2');
+  const z3 = zoneList.find(z => z.zone === 'Z3');
+  const z4 = zoneList.find(z => z.zone === 'Z4');
+
+  const hrMarathon = z3 ? (z3.hr_min + z3.hr_max) / 2 : 147;
+  const hrRustig   = z2 ? (z2.hr_min + z2.hr_max) / 2 : 133;
+  const hrDrempel  = z4 ? (z4.hr_min + z4.hr_max) / 2 : 157;
+
+  const secMarathon = interpoleer(hrMarathon);
+  const secRustig   = interpoleer(hrRustig);
+  const secDrempel  = interpoleer(hrDrempel);
+
+  if (!secMarathon) return null;
+
+  return {
+    marathonTempo: fmtPace(secMarathon),
+    marathonTijd:  fmtMarathon(secMarathon),
+    rustigTempo:   fmtPace(secRustig),
+    drempelTempo:  fmtPace(secDrempel),
+    hrMarathon:    Math.round(hrMarathon),
+    hrRustig:      Math.round(hrRustig),
+    hrDrempel:     Math.round(hrDrempel),
+    dataPunten:    points.map(p => `${fmtPace(p.sec)}/km → ${p.hr} bpm`).join(', '),
+  };
+}
+
 // Verwijder null/undefined/lege velden uit een array van platte objecten.
 function stripNulls(arr) {
   return (arr || []).map(item => {
@@ -1021,29 +1097,21 @@ ACTIVITEITEN (meest recent eerst):
 ${activitiesJson}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
 
   const memCtx = getMemCtx();
-  const isFirst = !CONFIG.prestatie || CONFIG.conditie === 'beginner' || CONFIG.conditie === 'sub5';
   const flagInstructie = `- Als iemand iets noemt dat relevant is voor toekomstige planning (blessure, pijn, ziekte, drukke periode op werk, vakantie, etc.), sla dit op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false} (gebruik dezelfde "tag" om een eerder punt te updaten/op te lossen door "opgelost": true te zetten). De datum wordt automatisch toegevoegd — zet daarom NOOIT een dag van de week, "vandaag", "gisteren" of een andere relatieve tijdsaanduiding in "omschrijving" zelf (die wordt op den duur fout, want dezelfde dagnaam komt elke week terug). Schrijf objectief, bv. "buikgriep" niet "buikgriep was woensdag".
 - Bij elk gesprek: bekijk de bestaande AANDACHTSPUNTEN en hun "datum". Tijdelijke/acute punten (ziekte, eenmalige slechte nacht, een kortdurende blessure-vlaag e.d.) die qua aard allang voorbij hun eigen hersteltermijn zijn (bv. een omschrijving noemt "48u" en het is inmiddels >48u later, of het is een verkoudheid/griep van >1-2 weken geleden) MOET je automatisch op "opgelost": true zetten via een nieuwe FLAG_JSON met dezelfde tag — wacht niet tot de gebruiker dit zelf meldt. Structurele/blijvende punten (chronische blessuregeschiedenis, races, doelkeuzes) blijven gewoon staan.
 - Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.
 - Als er nieuwe empirische data beschikbaar is om hartslagzones te verfijnen (bijv. uit Strava streams of een test), sla de bijgewerkte zones op als ZONES_JSON: { "bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [ { "zone": "Z1", "naam": "...", "hr_max": N, "tempo_min_km": "M:SS" }, ... ], "notitie": "..." }. Gebruik daarna ALTIJD de HARTSLAGZONES uit het coachgeheugen — NOOIT generieke tabellen.`;
-  const approach = isFirst ? `
+  const approach = `
 # COACHFILOSOFIE
-- Slimme progressie: uitdagen én beschermen. Niet standaard afremmen — kijk naar de data.
-- Gebruik de HARTSLAGZONES uit het coachgeheugen voor alle tempo-adviezen. Nooit generieke richtlijnen.
-- Volumeopbouw: max ~10% per week als stelregel, maar afwijken mag als CTL/ATL/TSB en gevoel het toelaten.
-- Elke 3-4 weken een lichtere week — niet als dogma maar als herstelmiddel als TSB te negatief wordt.
-- Bij pijnsignalen: analyseer eerst (acuut vs. structureel, blessurerisico vs. normale vermoeidheid). Rust alleen adviseren bij duidelijke reden, niet als standaardreactie op twijfel.
-- Fueling bij lange duur (>75 min): koolhydraten elke 30-40 min, trainbaar systeem — begin vroeg.
-- Als de atleet aangeeft meer aan te kunnen dan geadviseerd: neem dat serieus en pas het advies aan op basis van data, niet op basis van voorzichtigheid.
-- Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
-${flagInstructie}` : `
-# COACHFILOSOFIE
-- Prestatiegericht coachen: benut het huidige fitnessniveau maximaal zonder onnodige remmen.
-- Gebruik de HARTSLAGZONES uit het coachgeheugen voor alle tempo-adviezen. Nooit generieke richtlijnen.
-- Kwaliteit boven kwantiteit: 2-3 gerichte kwaliteitssessies per week zodra CTL > 35.
-- TSB als sturingsmiddel: plan kwaliteit bij TSB > 0, herstel bij TSB < -10 — niet op gevoel alleen.
-- Als de atleet aangeeft meer aan te kunnen dan geadviseerd: neem dat serieus en pas het advies aan op basis van data, niet op basis van voorzichtigheid.
-- Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen adviseren bij duidelijke reden.
+- Prestatiegericht en data-gedreven: gebruik ALTIJD de empirische pace-HR data als basis voor tempo-adviezen. Nooit generieke tabellen.
+- Tempo-advies werkwijze: kijk eerst naar de BEREKENDE TEMPOS in de Strava-sectie. Geef die tempos, niet een conservatieve marge daarbovenop.
+- Als de data bijv. marathontempo 5:10/km aangeeft: adviseer 5:10–5:20/km. NIET 5:30 "voor de zekerheid".
+- Marathonpotentie beoordelen op basis van pace-HR verhouding — NIET op basis van absolute tijden of afstanden. Een atleet die 4:45/km loopt bij 153 bpm is fitter dan generieke tabellen suggereren.
+- Volumeopbouw: max ~10% per week, maar afwijken mag als CTL/ATL/TSB en gevoel het toelaten.
+- TSB als sturingsmiddel: plan kwaliteit bij TSB > 0, herstel bij TSB < -10.
+- Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen adviseren bij duidelijke reden, niet als standaardreactie.
+- Fueling bij lange duur (>75 min): koolhydraten elke 30-40 min.
+- Als de atleet aangeeft meer aan te kunnen: neem dat serieus. De atleet kent haar eigen lichaam — pas het advies aan.
 - Sla macroplan op als MACROPLAN_JSON: {...} en weekplan als WEEKPLAN_JSON: {...}
 ${flagInstructie}`;
 
@@ -1075,16 +1143,29 @@ Slaap/rust_hr/HRV/etc. zijn ondersteunende signalen, geen losse oordelen:
 - Bij twijfel: noem de metric niet, of benoem expliciet dat er te weinig data is om iets te concluderen.
 ${approach}${data}
 ${memCtx ? '\n\n# COACHGEHEUGEN (context uit eerdere gesprekken — gebruik dit voor planning/voorkeuren, NIET als bron voor "wat is er getraind", dat staat altijd in TRAININGSDATA hierboven)\n' + memCtx : ''}
-${stravaAnalysis ? `\n\n# STRAVA STREAMANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
-Dit zijn per-seconde streamdata van Strava van de laatste 3 runs, verwerkt tot blokanalyse en een empirische pace-HR correlatie.
+${(() => {
+  if (!stravaAnalysis) return '';
+  const inzicht = computeTempoInzicht(stravaAnalysis.data?.pace_hr_correlatie, MEM.zones);
+  const inzichtTxt = inzicht ? `
+BEREKENDE TEMPOS VOOR HAAR (automatisch afgeleid via interpolatie — gebruik DEZE getallen, niet generieke tabellen):
+${inzicht.marathonTempo ? `- Marathontempo (Z3-hartslag ~${inzicht.hrMarathon} bpm): ${inzicht.marathonTempo}/km → geschatte marathontijd ${inzicht.marathonTijd}` : '- Marathontempo: onvoldoende data in Z3-range'}
+${inzicht.drempelTempo  ? `- Drempeltraining (Z4 ~${inzicht.hrDrempel} bpm): ${inzicht.drempelTempo}/km` : ''}
+${inzicht.rustigTempo   ? `- Rustige/herstelrun (Z2 ~${inzicht.hrRustig} bpm): ${inzicht.rustigTempo}/km` : '- Rustig tempo: onvoldoende data in Z2-range (voeg een easy run toe voor betere calibratie)'}
+Gebruikte datapunten: ${inzicht.dataPunten}
 
-KRITISCHE INSTRUCTIE voor zone/tempo vragen:
-- Gebruik UITSLUITEND het veld "pace_hr_correlatie" om te bepalen welk tempo bij welke hartslagzone hoort voor deze atleet.
-- Gebruik NOOIT generieke zone-tabellen of vuistregels — die kloppen niet voor deze specifieke persoon.
-- Als de correlatie bijv. toont dat 4:30–5:00/km gemiddeld HR 152 bpm geeft, dan is dat tempo de feitelijke bovengrens van die hartslagzone voor haar.
-- Interpoleer tussen de buckets voor tempos die er tussenin vallen.
+INSTRUCTIE: Bovenstaande tempos zijn de feitelijke grenswaarden voor HAAR. Als de berekening bijv. marathontempo 5:10/km geeft, adviseer dan 5:10–5:20/km — niet 5:30–5:45 "om veilig te zijn". De data IS de veiligheid.` : '';
+  return `\n\n# STRAVA STREAMANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
+Per-seconde streamdata van Strava, verwerkt tot blokanalyse en empirische pace-HR correlatie.
+${inzichtTxt}
 
-${JSON.stringify(stravaAnalysis.data, null, 2)}` : ''}
+TEMPO-ADVIES PROTOCOL — verplicht bij elk schema of tempo-advies:
+1. Lees de pace_hr_correlatie hieronder
+2. Bepaal welke HR-zone van toepassing is
+3. Lees (of interpoleer) welk tempo daarmee overeenkomt voor HAAR
+4. Gebruik DAT tempo — niet een veiligheidsmarge daar bovenop
+
+${JSON.stringify(stravaAnalysis.data, null, 2)}`;
+})()}
 
 Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
 ${(() => {

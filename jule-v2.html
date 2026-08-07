@@ -671,6 +671,88 @@ h3 { font-size: 16px; font-weight: 600; }
   font-family: var(--font);
 }
 
+/* ─── HOME TAB ─── */
+#tab-home {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0;
+}
+.home-scroll {
+  padding-bottom: 24px;
+}
+.home-hero {
+  padding: 24px 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.home-hero-greeting {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.home-hero-race {
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+.home-hero-countdown {
+  font-size: 13px;
+  color: var(--text2);
+}
+.home-hero-countdown strong {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 16px;
+}
+@media (max-width: 380px) {
+  .home-stats { grid-template-columns: 1fr 1fr; }
+}
+.home-today-card {
+  margin: 0 16px;
+}
+.home-actions {
+  padding: 12px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.macro-fase-card {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.macro-fase-card:last-child { margin-bottom: 0; }
+.week-dag-card {
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: var(--surface);
+}
+.week-dag-card:last-child { margin-bottom: 0; }
+.week-dag-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
 /* ─── DESKTOP OVERRIDES ─── */
 @media (min-width: 768px) {
   #top-nav { padding: 0 24px; }
@@ -759,7 +841,11 @@ h3 { font-size: 16px; font-weight: 600; }
       </div>
 
       <div class="sidebar-tabs">
-        <button class="sidebar-tab active" data-tab="chat" onclick="switchTab('chat')">
+        <button class="sidebar-tab active" data-tab="home" onclick="switchTab('home')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Home
+        </button>
+        <button class="sidebar-tab" data-tab="chat" onclick="switchTab('chat')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Chat
         </button>
@@ -775,12 +861,69 @@ h3 { font-size: 16px; font-weight: 600; }
 
       <!-- Desktop tab bar -->
       <div class="tab-bar-desktop">
-        <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">Chat</button>
+        <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">Home</button>
+        <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">Chat</button>
         <button class="tab-btn" data-tab="planning" onclick="switchTab('planning')">Planning</button>
       </div>
 
+      <!-- HOME TAB -->
+      <div id="tab-home" class="tab-content active">
+        <div class="home-scroll">
+
+          <div class="home-hero">
+            <div class="home-hero-greeting" id="home-greeting">Welkom, Jule.</div>
+            <div class="home-hero-race" id="home-race-label">Amsterdam Marathon</div>
+            <div class="home-hero-countdown">
+              <strong id="home-countdown">—</strong> dagen te gaan
+            </div>
+            <div class="journey-bar-track" style="margin-top:14px">
+              <div class="journey-bar-fill" id="home-journey-fill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <div class="home-stats">
+            <div class="stat-card">
+              <div class="stat-val" id="home-ctl">—</div>
+              <div class="stat-lbl">CTL</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val" id="home-atl">—</div>
+              <div class="stat-lbl">ATL</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val" id="home-tsb">—</div>
+              <div class="stat-lbl">TSB</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val" id="home-acwr">—</div>
+              <div class="stat-lbl">ACWR</div>
+            </div>
+          </div>
+
+          <div class="card home-today-card">
+            <div class="label" style="margin-bottom:8px">Vandaag</div>
+            <div id="home-today-content" style="font-size:14px;color:var(--text2);line-height:1.6">Weekplan wordt geladen…</div>
+          </div>
+
+          <div class="home-actions">
+            <button class="btn btn-primary btn-full" onclick="switchTab('chat');setTimeout(()=>document.getElementById('coach-input').focus(),200)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Stel een vraag aan de coach
+            </button>
+          </div>
+
+          <div class="quick-row" style="padding-top:12px">
+            <button class="quick-btn" onclick="quickSend('Check-in: hoe sta ik ervoor qua herstel en belasting?');switchTab('chat')">Check-in</button>
+            <button class="quick-btn" onclick="quickSend('Wat is de training voor vandaag?');switchTab('chat')">Training vandaag</button>
+            <button class="quick-btn" onclick="quickSend('Maak een weekschema voor komende week op basis van mijn CTL/ATL/TSB. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.');switchTab('chat')">Weekschema</button>
+            <button class="quick-btn" onclick="switchTab('planning')">Planning →</button>
+          </div>
+
+        </div>
+      </div>
+
       <!-- CHAT TAB -->
-      <div id="tab-chat" class="tab-content active">
+      <div id="tab-chat" class="tab-content">
         <div class="coach-quick-row">
           <button class="coach-quick-btn" onclick="quickSend('Check-in: hoe staat mijn herstel ervoor op basis van de data? TSB-trend, CTL, slaap. Wees direct.')">Check-in</button>
           <button class="coach-quick-btn" onclick="quickSend('Geef me een gedetailleerd trainingsplan voor vandaag: opwarm, hoofdwerk met zones en HR-targets, afkoel. Houd rekening met mijn herstelstatus.')">Training vandaag</button>
@@ -846,7 +989,11 @@ h3 { font-size: 16px; font-weight: 600; }
 
   <!-- Bottom nav (mobile) -->
   <div id="bottom-nav">
-    <button class="btm-tab active" data-tab="chat" onclick="switchTab('chat')">
+    <button class="btm-tab active" data-tab="home" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="btm-tab" data-tab="chat" onclick="switchTab('chat')">
       <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Chat
     </button>
@@ -874,7 +1021,7 @@ let stravaAnalysis = null;
 let MEM = { macroplan: null, weekplannen: [], flags: [], zones: null };
 let messages = [];
 let isLoading = false;
-let currentTab = 'chat';
+let currentTab = 'home';
 
 /* ═══════════════════════════════════════════
    SUPABASE HELPERS
@@ -996,6 +1143,7 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab)?.classList.add('active');
   document.querySelectorAll('[data-tab="' + tab + '"]').forEach(el => el.classList.add('active'));
   if (tab === 'planning') renderPlanningTab();
+  if (tab === 'home') renderHomeTab();
 }
 
 function updateSidebarStats() {
@@ -1023,16 +1171,19 @@ function updateSidebarStats() {
     el.className = 'stat-val ' + (v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
   }
 
-  // Journey progress bar (weeks since training start to race)
+  // Journey progress bar (sidebar)
   const raceDate = new Date('2026-10-18');
   const now = new Date();
   const diff = raceDate - now;
   if (diff > 0) {
-    const totalDays = 365; // ~1 year training block
+    const totalDays = 365;
     const elapsed = totalDays - Math.floor(diff / 86400000);
     const pct = Math.max(0, Math.min(100, (elapsed / totalDays) * 100));
     document.getElementById('journey-fill').style.width = pct + '%';
   }
+
+  // Also refresh home tab stats if on home
+  if (currentTab === 'home') renderHomeTab();
 }
 
 function updateCountdown() {
@@ -1070,27 +1221,199 @@ function updateAthleteUI() {
 }
 
 /* ═══════════════════════════════════════════
+   HOME TAB RENDERER
+═══════════════════════════════════════════ */
+function getTodayFromWeekplan() {
+  if (!MEM.weekplannen?.length) return null;
+  const latest = Array.isArray(MEM.weekplannen)
+    ? MEM.weekplannen[MEM.weekplannen.length - 1]
+    : MEM.weekplannen;
+  const dagData = latest?.dagen || latest?.days || {};
+  const dagNamen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  const todayNl = dagNamen[new Date().getDay()];
+  const d = dagData[todayNl];
+  if (!d) return null;
+  return { dag: todayNl, ...d };
+}
+
+function renderHomeTab() {
+  const naam = CONFIG.naam || 'Jule';
+  const uur = new Date().getHours();
+  const groet = uur < 12 ? 'Goedemorgen' : uur < 18 ? 'Goedemiddag' : 'Goedenavond';
+
+  const grEl = document.getElementById('home-greeting');
+  if (grEl) grEl.textContent = groet + ', ' + naam + '.';
+
+  const rlEl = document.getElementById('home-race-label');
+  if (rlEl) rlEl.textContent = CONFIG.doel || 'Amsterdam Marathon';
+
+  // Countdown + journey
+  const raceDate = new Date('2026-10-18T09:00:00');
+  const diff = raceDate - new Date();
+  const cdEl = document.getElementById('home-countdown');
+  if (cdEl) cdEl.textContent = diff > 0 ? Math.floor(diff / 86400000) : '—';
+  const jfEl = document.getElementById('home-journey-fill');
+  if (jfEl && diff > 0) {
+    const totalDays = 365;
+    const elapsed = totalDays - Math.floor(diff / 86400000);
+    jfEl.style.width = Math.max(0, Math.min(100, (elapsed / totalDays) * 100)) + '%';
+  }
+
+  // Stats
+  if (intervalsCtx?.wellness?.length) {
+    const latest = intervalsCtx.wellness[intervalsCtx.wellness.length - 1];
+    const ctl = latest.ctl != null ? Math.round(latest.ctl) : null;
+    const atl = latest.atl != null ? Math.round(latest.atl) : null;
+    const tsb = (ctl != null && atl != null) ? Math.round(ctl - atl) : null;
+    const acwr = (ctl && atl && ctl > 0) ? (atl / ctl).toFixed(2) : null;
+    if (ctl != null) document.getElementById('home-ctl').textContent = ctl;
+    if (atl != null) document.getElementById('home-atl').textContent = atl;
+    if (tsb != null) {
+      const el = document.getElementById('home-tsb');
+      el.textContent = (tsb > 0 ? '+' : '') + tsb;
+      el.className = 'stat-val ' + (tsb > 5 ? 'good' : tsb < -10 ? 'crit' : tsb < -5 ? 'warn' : '');
+    }
+    if (acwr != null) {
+      const el = document.getElementById('home-acwr');
+      el.textContent = acwr;
+      el.className = 'stat-val ' + (parseFloat(acwr) <= 1.3 ? 'good' : parseFloat(acwr) <= 1.5 ? 'warn' : 'crit');
+    }
+  }
+
+  // Today's plan
+  const todayEl = document.getElementById('home-today-content');
+  if (todayEl) {
+    const td = getTodayFromWeekplan();
+    if (td) {
+      const isRust = (td.type || '').toLowerCase().includes('rust') || (td.type || '').toLowerCase() === 'vrij';
+      if (isRust) {
+        todayEl.innerHTML = '<span style="color:var(--success);font-weight:600">✓ Rustdag</span>'
+          + (td.toelichting ? '<br><span style="font-size:13px;color:var(--text2)">' + escapeHtml(td.toelichting) + '</span>' : '');
+      } else {
+        let parts = [];
+        if (td.type) parts.push('<strong>' + escapeHtml(td.type) + '</strong>');
+        if (td.duur_min) parts.push(td.duur_min + ' min');
+        if (td.afstand_km) parts.push(td.afstand_km + ' km');
+        if (td.zones || td.zone) parts.push(escapeHtml(td.zones || td.zone));
+        if (td.tempo) parts.push(escapeHtml(td.tempo));
+        todayEl.innerHTML = parts.join(' · ')
+          + (td.toelichting ? '<br><span style="font-size:12px;color:var(--text2);margin-top:4px;display:block">' + escapeHtml(td.toelichting) + '</span>' : '');
+      }
+    } else if (MEM.weekplannen?.length) {
+      todayEl.innerHTML = '<span style="color:var(--text2)">Geen sessie voor vandaag gevonden in het weekplan.</span>';
+    } else {
+      todayEl.innerHTML = '<span style="color:var(--muted)">Nog geen weekplan aangemaakt.</span>'
+        + '<br><button class="planning-action-btn" style="margin-top:8px" onclick="quickSend(\'Maak een weekschema voor deze week op basis van mijn CTL/ATL/TSB. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.\');switchTab(\'chat\')">Weekschema aanvragen</button>';
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════
    PLANNING TAB RENDERER
 ═══════════════════════════════════════════ */
+function renderMacroplan(macro) {
+  if (!macro) return null;
+  let html = '';
+  if (macro.doel || macro.racedatum || macro.totaalWeken) {
+    html += '<div style="margin-bottom:16px">';
+    if (macro.doel) html += '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">' + escapeHtml(macro.doel) + '</div>';
+    if (macro.racedatum) html += '<div style="font-size:13px;color:var(--text2)">Racedag: ' + escapeHtml(macro.racedatum) + '</div>';
+    if (macro.totaalWeken) html += '<div style="font-size:13px;color:var(--text2)">' + escapeHtml(String(macro.totaalWeken)) + ' weken voorbereiding</div>';
+    html += '</div>';
+  }
+  const fases = macro.fases || macro.fasen || macro.phases || [];
+  if (fases.length) {
+    const kleuren = ['var(--accent)', 'var(--cyan)', 'var(--success)', 'var(--warning)'];
+    fases.forEach((fase, i) => {
+      const kleur = kleuren[i % kleuren.length];
+      html += '<div class="macro-fase-card" style="border-left:3px solid ' + kleur + '">';
+      html += '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">' + escapeHtml(fase.naam || fase.name || 'Fase ' + (i + 1)) + '</div>';
+      const pills = [];
+      if (fase.periode || fase.weken) pills.push(escapeHtml(fase.periode || fase.weken));
+      if (fase.doelCTL) pills.push('CTL doel: ' + escapeHtml(String(fase.doelCTL)));
+      if (fase.weekvolume_km) pills.push(escapeHtml(String(fase.weekvolume_km)) + ' km/week');
+      if (pills.length) html += '<div class="week-dag-pills">' + pills.map(p => '<span class="pill">' + p + '</span>').join('') + '</div>';
+      if (fase.focus) html += '<div style="font-size:13px;color:var(--text2);margin-top:4px">' + escapeHtml(fase.focus) + '</div>';
+      const sessies = fase.sleutelsessies || fase.sessies || [];
+      if (sessies.length) html += '<div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7">' + sessies.map(s => '· ' + escapeHtml(s)).join('<br>') + '</div>';
+      html += '</div>';
+    });
+  } else {
+    html += '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5">' + escapeHtml(JSON.stringify(macro, null, 2)) + '</pre>';
+  }
+  return html;
+}
+
+function renderWeekplan(week) {
+  if (!week) return null;
+  let html = '';
+  const hasHeader = week.week || week.startdatum || week.totaalKm;
+  if (hasHeader) {
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">';
+    html += '<div>';
+    if (week.week) html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(week.week) + '</div>';
+    if (week.startdatum) html += '<div style="font-size:12px;color:var(--text2)">Vanaf ' + escapeHtml(week.startdatum) + '</div>';
+    html += '</div>';
+    if (week.totaalKm) html += '<span class="pill">' + escapeHtml(String(week.totaalKm)) + ' km</span>';
+    html += '</div>';
+  }
+  const dagVolgorde = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+  const dagData = week.dagen || week.days || {};
+  const sleutels = Object.keys(dagData);
+  if (sleutels.length) {
+    sleutels.sort((a, b) => {
+      const ia = dagVolgorde.indexOf(a.toLowerCase());
+      const ib = dagVolgorde.indexOf(b.toLowerCase());
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+    sleutels.forEach(dag => {
+      const d = dagData[dag];
+      if (!d) return;
+      const isRust = (d.type || '').toLowerCase().includes('rust') || (d.type || '').toLowerCase() === 'vrij';
+      const kleur = isRust ? 'var(--muted)' : 'var(--accent)';
+      html += '<div class="week-dag-card"' + (isRust ? '' : ' style="border-left:3px solid ' + kleur + '"') + '>';
+      html += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
+      html += '<div style="font-size:13px;font-weight:600;color:var(--text);text-transform:capitalize">' + escapeHtml(dag) + '</div>';
+      html += '<div style="font-size:12px;color:' + (isRust ? 'var(--muted)' : 'var(--text2)') + '">' + escapeHtml(d.type || '') + '</div>';
+      html += '</div>';
+      if (!isRust) {
+        const pills = [];
+        if (d.duur_min) pills.push(d.duur_min + ' min');
+        if (d.afstand_km) pills.push(d.afstand_km + ' km');
+        if (d.zones || d.zone) pills.push(escapeHtml(d.zones || d.zone));
+        if (d.tempo) pills.push(escapeHtml(d.tempo));
+        if (pills.length) html += '<div class="week-dag-pills">' + pills.map(p => '<span class="pill">' + p + '</span>').join('') + '</div>';
+        if (d.toelichting) html += '<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-top:4px">' + escapeHtml(d.toelichting) + '</div>';
+      }
+      html += '</div>';
+    });
+  } else {
+    html += '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5">' + escapeHtml(JSON.stringify(week, null, 2)) + '</pre>';
+  }
+  return html;
+}
+
 function renderPlanningTab() {
   // Macroplan
   const macroEl = document.getElementById('planning-macro-content');
   if (MEM.macroplan) {
-    const txt = typeof MEM.macroplan === 'string' ? MEM.macroplan : JSON.stringify(MEM.macroplan, null, 2);
-    macroEl.innerHTML = '<div class="planning-card">' + escapeHtml(txt) + '</div>';
+    const rendered = renderMacroplan(MEM.macroplan);
+    macroEl.innerHTML = '<div style="padding:4px 0">' + rendered + '</div>'
+      + '<button class="planning-action-btn" onclick="quickSend(\'Update het macroplan op basis van mijn actuele voortgang. Sluit af met MACROPLAN_JSON.\');switchTab(\'chat\')" style="margin-top:4px">Macroplan updaten</button>';
   } else {
-    macroEl.innerHTML = '<div class="planning-empty">Nog geen macroplan.<br><button class="planning-action-btn" onclick="quickSend(\'Maak een macroplan voor de komende maanden richting mijn marathondoel. Inclueer periodisering, wekelijks volume en sleutelsessies. Sluit af met MACROPLAN_JSON.\');switchTab(\'chat\')">Macroplan aanvragen</button></div>';
+    macroEl.innerHTML = '<div class="planning-empty">Nog geen macroplan.<br><button class="planning-action-btn" onclick="quickSend(\'Maak een macroplan voor de komende maanden richting mijn marathondoel. Inclueer periodisering (opbouw/piek/taper), wekelijks volume en sleutelsessies per fase. Sluit af met MACROPLAN_JSON.\');switchTab(\'chat\')">Macroplan aanvragen</button></div>';
   }
 
   // Most recent weekplan
   const weekEl = document.getElementById('planning-week-content');
-  if (MEM.weekplannen && MEM.weekplannen.length) {
+  if (MEM.weekplannen?.length) {
     const latest = Array.isArray(MEM.weekplannen) ? MEM.weekplannen[MEM.weekplannen.length - 1] : MEM.weekplannen;
-    const txt = typeof latest === 'string' ? latest : JSON.stringify(latest, null, 2);
-    weekEl.innerHTML = '<div class="planning-card">' + escapeHtml(txt) + '</div>';
-    if (MEM.weekplannen.length > 1) {
-      weekEl.innerHTML += '<div style="font-size:11px;color:var(--muted);margin-top:6px;padding:0 2px">' + MEM.weekplannen.length + ' weekplannen opgeslagen</div>';
+    const rendered = renderWeekplan(latest);
+    weekEl.innerHTML = '<div style="padding:4px 0">' + rendered + '</div>';
+    if (Array.isArray(MEM.weekplannen) && MEM.weekplannen.length > 1) {
+      weekEl.innerHTML += '<div style="font-size:11px;color:var(--muted);margin-top:8px">' + MEM.weekplannen.length + ' weekplannen opgeslagen</div>';
     }
+    weekEl.innerHTML += '<button class="planning-action-btn" onclick="quickSend(\'Maak een nieuw weekschema voor komende week op basis van mijn actuele CTL/ATL/TSB. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.\');switchTab(\'chat\')" style="margin-top:4px">Nieuw weekschema</button>';
   } else {
     weekEl.innerHTML = '<div class="planning-empty">Nog geen weekplan.<br><button class="planning-action-btn" onclick="quickSend(\'Maak een weekschema voor deze week op basis van mijn CTL/ATL/TSB. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.\');switchTab(\'chat\')">Weekschema aanvragen</button></div>';
   }
@@ -1268,14 +1591,9 @@ async function submitMessage() {
 
   try {
     const model = document.getElementById('model-select').value || CONFIG.model || 'claude-sonnet-4-6';
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CONFIG.claudeKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
         max_tokens: 8000,
@@ -1623,7 +1941,8 @@ async function init() {
     fetchIntervalsData(),
   ]);
 
-  // Render planning tab (data now available)
+  // Render tabs with loaded data
+  renderHomeTab();
   renderPlanningTab();
 }
 

@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HADR Jule">
+<meta name="theme-color" content="#07091A">
+<title>HADR — Jule</title>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS (verbatim from v3)
+═══════════════════════════════════════════ */
+:root {
+  --bg:       #07091A;
+  --surface:  #0C1126;
+  --surface2: #111B38;
+  --border:   rgba(100,140,255,0.08);
+  --border2:  rgba(100,140,255,0.14);
+  --text:     #E8EAFE;
+  --text2:    #8899BB;
+  --muted:    #3D4A68;
+  --accent:   #4F8EF7;
+  --cyan:     #22D3EE;
+  --grad:     linear-gradient(135deg,#4F8EF7 0%,#22D3EE 100%);
+  --success:  #34D399;
+  --warning:  #FBBF24;
+  --danger:   #F87171;
+  --r:        16px;
+  --r-sm:     10px;
+  --nav-h:    68px;
+  --font:     'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   APP SHELL (v3 verbatim)
+═══════════════════════════════════════════ */
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+h3 { font-size: 16px; font-weight: 600; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+}
+.card + .card { margin-top: 12px; }
+.card-sm { padding: 14px 16px; }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+.good   { color: var(--success); }
+.warn   { color: var(--warning); }
+.crit   { color: var(--danger); }
+.accent { color: var(--accent); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.pill-success { background: rgba(52,211,153,0.1); color: var(--success); border-color: rgba(52,211,153,0.2); }
+.pill-warn { background: rgba(251,191,36,0.1); color: var(--warning); border-color: rgba(251,191,36,0.2); }
+.pill-danger { background: rgba(248,113,113,0.1); color: var(--danger); border-color: rgba(248,113,113,0.2); }
+
+/* quick row (v3) */
+.quick-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 12px; }
+.quick-btn {
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font);
+  transition: background 0.12s;
+}
+.quick-btn:active { background: var(--surface2); }
+
+/* coach chat (v3 verbatim) */
+.coach-quick-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+.coach-quick-row::-webkit-scrollbar { display: none; }
+.coach-quick-btn {
+  padding: 7px 13px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+.coach-quick-btn:active { color: var(--text); background: var(--surface2); }
+
+.coach-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.msg-wrap { display: flex; flex-direction: column; gap: 4px; }
+.msg-wrap.user { align-items: flex-end; }
+.msg-wrap.assistant { align-items: flex-start; }
+.msg-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); padding: 0 4px; }
+
+.msg-bubble {
+  max-width: 85%;
+  padding: 11px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.msg-wrap.user .msg-bubble {
+  background: var(--accent);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.msg-wrap.assistant .msg-bubble {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.msg-bubble strong { font-weight: 600; }
+.msg-bubble em { font-style: italic; color: var(--text2); }
+.msg-bubble code { font-family: monospace; font-size: 12px; background: var(--surface2); padding: 1px 4px; border-radius: 4px; }
+.msg-bubble p { margin-bottom: 8px; }
+.msg-bubble p:last-child { margin-bottom: 0; }
+.msg-bubble ul, .msg-bubble ol { padding-left: 18px; margin-bottom: 8px; }
+.msg-bubble li { margin-bottom: 3px; }
+.msg-bubble h1, .msg-bubble h2, .msg-bubble h3 { margin-bottom: 6px; margin-top: 10px; }
+.msg-bubble h3 { font-size: 14px; }
+
+.typing-dots { display: flex; gap: 4px; padding: 14px; }
+.t-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text2); animation: tp 1.4s infinite; }
+.t-dot:nth-child(2) { animation-delay: 0.2s; }
+.t-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes tp { 0%,60%,100%{opacity:.3;transform:scale(1)} 30%{opacity:1;transform:scale(1.2)} }
+
+.welcome-msg { text-align: center; padding: 40px 20px; color: var(--text2); }
+.welcome-msg h3 { color: var(--text); margin-bottom: 8px; font-size: 18px; }
+.welcome-msg p { font-size: 14px; line-height: 1.6; }
+
+.coach-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background: rgba(7,9,26,0.96);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+.coach-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  outline: none;
+  resize: none;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.4;
+}
+.coach-input:focus { border-color: var(--accent); }
+.coach-input::placeholder { color: var(--muted); }
+.coach-send {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--grad);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+.coach-send.enabled { opacity: 1; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.fade-up { animation: fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* Markdown in msg */
+.md h1,.md h2,.md h3 { font-weight: 600; margin-bottom: 6px; }
+.md h3 { font-size: 14px; }
+.md p { margin-bottom: 8px; }
+.md p:last-child { margin-bottom: 0; }
+.md ul,.md ol { padding-left: 18px; margin-bottom: 8px; }
+.md li { margin-bottom: 3px; }
+.md strong { font-weight: 600; }
+.md code { font-family: monospace; font-size: 11px; background: var(--surface2); padding: 1px 4px; border-radius: 3px; }
+.md pre { background: var(--surface2); padding: 10px; border-radius: 8px; overflow-x: auto; margin-bottom: 8px; }
+.md pre code { background: none; padding: 0; }
+.md blockquote { border-left: 2px solid var(--accent); padding-left: 10px; color: var(--text2); margin-bottom: 8px; }
+
+/* btn */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 18px; border-radius: var(--r-sm); font-size: 14px; font-weight: 600;
+  font-family: var(--font); cursor: pointer; border: none; transition: opacity 0.12s;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.btn:active { opacity: 0.75; }
+.btn-primary { background: var(--grad); color: white; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+.btn-full { width: 100%; }
+
+/* ═══════════════════════════════════════════
+   JULE V2 LAYOUT
+═══════════════════════════════════════════ */
+
+/* No-config screen */
+#no-config {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  align-items: center; justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 32px;
+  gap: 16px;
+}
+#no-config h2 { font-size: 20px; color: var(--text); }
+#no-config p { font-size: 14px; color: var(--text2); line-height: 1.6; max-width: 340px; }
+#no-config a {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding: 12px 24px;
+  background: var(--grad); color: white;
+  border-radius: var(--r-sm); font-weight: 600; font-size: 14px;
+  text-decoration: none;
+}
+
+/* App shell */
+#app {
+  display: none;
+  flex-direction: column;
+  height: 100dvh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Top nav */
+#top-nav {
+  display: flex;
+  align-items: center;
+  height: 54px;
+  padding: 0 16px;
+  flex-shrink: 0;
+  background: rgba(7,9,26,0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border2);
+  z-index: 50;
+  gap: 12px;
+}
+.nav-logo {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex-shrink: 0;
+}
+.nav-athlete-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.status-dot.loading { background: var(--warning); animation: pulse 1.2s infinite; }
+.status-dot.ok { background: var(--success); }
+.status-dot.err { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+#model-select {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text2);
+  font-size: 12px;
+  font-family: var(--font);
+  padding: 5px 8px;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+}
+#model-select:focus { border-color: var(--accent); }
+
+/* Below nav (sidebar + main) */
+#below-nav {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── SIDEBAR (desktop only) ─── */
+#sidebar {
+  display: none;
+  width: 260px;
+  flex-shrink: 0;
+  flex-direction: column;
+  border-right: 1px solid var(--border2);
+  background: rgba(7,9,26,0.98);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-hero {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.sidebar-race {
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 4px;
+}
+.sidebar-countdown {
+  font-size: 13px;
+  color: var(--text2);
+  margin-top: 4px;
+}
+.sidebar-countdown strong {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Journey progress bar */
+.journey-bar-track {
+  margin-top: 14px;
+  height: 2px;
+  background: rgba(100,140,255,0.12);
+  border-radius: 2px;
+  position: relative;
+}
+.journey-bar-fill {
+  height: 100%;
+  background: var(--grad);
+  border-radius: 2px;
+  position: relative;
+  transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
+}
+.journey-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: -3px; top: -3px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--cyan);
+}
+
+/* Stats grid */
+.sidebar-stats {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.stat-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+}
+.stat-val {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.stat-val.good { color: var(--success); -webkit-text-fill-color: var(--success); }
+.stat-val.warn { color: var(--warning); -webkit-text-fill-color: var(--warning); }
+.stat-val.crit { color: var(--danger);  -webkit-text-fill-color: var(--danger); }
+.stat-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+/* Sidebar actions */
+.sidebar-actions {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sidebar-action-btn:hover { background: var(--surface2); }
+.sidebar-action-btn svg { flex-shrink: 0; stroke: var(--accent); }
+
+/* Sidebar tab nav */
+.sidebar-tabs {
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sidebar-tab svg { flex-shrink: 0; stroke: currentColor; }
+.sidebar-tab.active { background: var(--surface2); color: var(--text); }
+.sidebar-tab.active svg { stroke: var(--accent); }
+
+/* ─── MAIN PANEL ─── */
+#main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Desktop tab bar inside main panel */
+.tab-bar-desktop {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab-bar-desktop .tab-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.12s, color 0.12s;
+}
+.tab-bar-desktop .tab-btn.active {
+  background: var(--surface2);
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+/* Tab content areas */
+.tab-content {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tab-content.active { display: flex; }
+
+/* ─── BOTTOM NAV (mobile) ─── */
+#bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(7,9,26,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border2);
+  display: flex;
+  align-items: flex-start;
+  z-index: 100;
+}
+.btm-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 2px 0;
+  gap: 4px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.btm-tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
+.btm-tab.active { color: var(--accent); }
+.btm-tab.active svg { stroke: var(--accent); }
+
+/* Mobile: tab-content needs bottom padding for bottom nav */
+@media (max-width: 767px) {
+  .tab-content.active {
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ─── PLANNING TAB ─── */
+#tab-planning {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  gap: 0;
+}
+.planning-section {
+  margin-bottom: 20px;
+}
+.planning-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+.planning-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-family: monospace;
+  overflow-x: auto;
+}
+.planning-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.planning-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px 18px;
+  border-radius: var(--r-sm);
+  background: var(--grad);
+  border: none;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+/* ─── DESKTOP OVERRIDES ─── */
+@media (min-width: 768px) {
+  #top-nav { padding: 0 24px; }
+  #sidebar { display: flex; }
+  .tab-bar-desktop { display: flex; }
+  #bottom-nav { display: none; }
+  #tab-planning { padding: 24px; }
+}
+
+/* No-config overlay */
+#no-config { display: none; }
+</style>
+</head>
+<body>
+
+<!-- No config screen -->
+<div id="no-config" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:32px;gap:16px">
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+  <h2 style="font-size:20px;color:var(--text)">Nog niet ingesteld</h2>
+  <p style="font-size:14px;color:var(--text2);line-height:1.6;max-width:320px">Stel eerst coach-light in op de hoofdpagina. Je gegevens worden daarna hier automatisch geladen.</p>
+  <a href="/" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:12px 24px;background:var(--grad);color:white;border-radius:var(--r-sm);font-weight:600;font-size:14px;text-decoration:none">Naar instellingen →</a>
+</div>
+
+<!-- Main app -->
+<div id="app">
+
+  <!-- Top nav -->
+  <nav id="top-nav">
+    <span class="nav-logo">HADR</span>
+    <div class="status-dot" id="status-dot"></div>
+    <span class="nav-athlete-label" id="nav-name">Jule</span>
+    <select id="model-select" title="Model">
+      <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+      <option value="claude-haiku-4-5">Haiku 4.5</option>
+    </select>
+  </nav>
+
+  <!-- Below nav -->
+  <div id="below-nav">
+
+    <!-- Sidebar (desktop) -->
+    <aside id="sidebar">
+      <div class="sidebar-hero">
+        <div class="sidebar-name" id="sidebar-name">Jule</div>
+        <div class="sidebar-race" id="sidebar-race">Amsterdam Marathon</div>
+        <div class="sidebar-countdown">
+          <strong id="countdown-days">—</strong> dagen te gaan
+        </div>
+        <div class="journey-bar-track">
+          <div class="journey-bar-fill" id="journey-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-stats">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-ctl">—</div>
+          <div class="stat-lbl">CTL</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-atl">—</div>
+          <div class="stat-lbl">ATL</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-tsb">—</div>
+          <div class="stat-lbl">TSB</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-acwr">—</div>
+          <div class="stat-lbl">ACWR</div>
+        </div>
+      </div>
+
+      <div class="sidebar-actions">
+        <button class="sidebar-action-btn" onclick="quickSend('Maak een adaptief weekschema voor de komende week op basis van mijn actuele CTL/ATL/TSB, trainingshistorie en hersteltoestand. Gebruik 80/20 polarisatie. Sluit af met een WEEKPLAN_JSON blok.');switchTab('chat')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Weekschema
+        </button>
+        <button class="sidebar-action-btn" onclick="quickSend('Analyseer mijn laatste training in detail: zones gerealiseerd, hartslag, tempo, TSS. Wat ging goed, wat kan beter, en wat betekent dit voor de komende 3 trainingen?');switchTab('chat')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Trainingsanalyse
+        </button>
+        <button class="sidebar-action-btn" onclick="quickSend('Check-in: hoe staat mijn herstel ervoor? Bespreek TSB-trend, CTL-opbouw en of ik klaar ben voor de volgende belasting. Wees direct en concreet.');switchTab('chat')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Check-in
+        </button>
+      </div>
+
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="chat" onclick="switchTab('chat')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat
+        </button>
+        <button class="sidebar-tab" data-tab="planning" onclick="switchTab('planning')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Planning
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main panel -->
+    <main id="main-panel">
+
+      <!-- Desktop tab bar -->
+      <div class="tab-bar-desktop">
+        <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">Chat</button>
+        <button class="tab-btn" data-tab="planning" onclick="switchTab('planning')">Planning</button>
+      </div>
+
+      <!-- CHAT TAB -->
+      <div id="tab-chat" class="tab-content active">
+        <div class="coach-quick-row">
+          <button class="coach-quick-btn" onclick="quickSend('Check-in: hoe staat mijn herstel ervoor op basis van de data? TSB-trend, CTL, slaap. Wees direct.')">Check-in</button>
+          <button class="coach-quick-btn" onclick="quickSend('Geef me een gedetailleerd trainingsplan voor vandaag: opwarm, hoofdwerk met zones en HR-targets, afkoel. Houd rekening met mijn herstelstatus.')">Training vandaag</button>
+          <button class="coach-quick-btn" onclick="quickSend('Maak een adaptief weekschema voor de komende week. Weeg CTL/ATL/TSB en open aandachtspunten. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.')">Weekschema</button>
+          <button class="coach-quick-btn" onclick="quickSend('Ben ik op schema voor mijn marathondoel? Geef een eerlijk antwoord op basis van CTL, VO2max en trainingshistorie. Wat zijn de risicofactoren?')">Op schema?</button>
+          <button class="coach-quick-btn" onclick="quickSend('Analyseer mijn herstelstatus: TSB-trend afgelopen 7 dagen, slaap en rustHR. Wat is de optimale trainingsbelasting voor de komende 3 dagen?')">Herstelanalyse</button>
+          <button class="coach-quick-btn" onclick="quickSend('Analyseer mijn laatste training in detail: zones, hartslag, tempo, TSS. Wat ging goed, wat kan beter?')">Gisteren analyseren</button>
+        </div>
+
+        <div class="coach-messages" id="coach-messages">
+          <div class="welcome-msg" id="coach-welcome">
+            <h3 id="welcome-greeting">Welkom, Jule.</h3>
+            <p>Ik heb alle data al geladen — stel een vraag of gebruik een snelknop.</p>
+          </div>
+        </div>
+
+        <div class="coach-composer">
+          <textarea id="coach-input" class="coach-input" placeholder="Vraag iets aan de coach…" rows="1"
+            oninput="autoResizeInput(this)"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitMessage();}"></textarea>
+          <button id="coach-send" class="coach-send" onclick="submitMessage()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- PLANNING TAB -->
+      <div id="tab-planning" class="tab-content">
+        <div class="planning-section">
+          <div class="planning-section-title">Macroplan</div>
+          <div id="planning-macro-content">
+            <div class="planning-empty">
+              Nog geen macroplan. Vraag de coach om een macroplan op te stellen.
+              <br>
+              <button class="planning-action-btn" onclick="quickSend('Maak een macroplan voor de komende maanden richting mijn marathondoel. Inclueer periodisering (opbouw/piek/taper), wekelijks volume en sleutelsessies per fase. Sluit af met MACROPLAN_JSON.');switchTab('chat')">
+                Macroplan aanvragen
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="planning-section">
+          <div class="planning-section-title">Huidig weekplan</div>
+          <div id="planning-week-content">
+            <div class="planning-empty">
+              Nog geen weekplan. Vraag de coach om een weekschema.
+              <br>
+              <button class="planning-action-btn" onclick="quickSend('Maak een weekschema voor deze week op basis van mijn CTL/ATL/TSB en open aandachtspunten. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.');switchTab('chat')">
+                Weekschema aanvragen
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="planning-section" id="planning-flags-section" style="display:none">
+          <div class="planning-section-title">Aandachtspunten</div>
+          <div id="planning-flags-content"></div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- /below-nav -->
+
+  <!-- Bottom nav (mobile) -->
+  <div id="bottom-nav">
+    <button class="btm-tab active" data-tab="chat" onclick="switchTab('chat')">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Chat
+    </button>
+    <button class="btm-tab" data-tab="planning" onclick="switchTab('planning')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Planning
+    </button>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+/* ═══════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════ */
+const SB_URL = 'https://wzrfdrcmkckcskhkddkr.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cmZkcmNta2NrY3NraGtkZGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMzYxNDksImV4cCI6MjA5MzcxMjE0OX0.Pixh9yMCx6ACE3UsVNsByp3WeeJNei84VWVvDqD7wfE';
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let CONFIG = {};
+let intervalsCtx = null;
+let stravaAnalysis = null;
+let MEM = { macroplan: null, weekplannen: [], flags: [], zones: null };
+let messages = [];
+let isLoading = false;
+let currentTab = 'chat';
+
+/* ═══════════════════════════════════════════
+   SUPABASE HELPERS
+═══════════════════════════════════════════ */
+async function sbSave(dataType, content) {
+  try {
+    await fetch(SB_URL + '/rest/v1/coach_light_data', {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({
+        user_key: CONFIG.intervalsId,
+        data_type: dataType,
+        content: JSON.stringify(content)
+      })
+    });
+  } catch(e) { console.warn('sbSave error:', dataType, e); }
+}
+
+async function sbLoad(dataType) {
+  try {
+    const r = await fetch(
+      SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(CONFIG.intervalsId) +
+      '&data_type=eq.' + encodeURIComponent(dataType) + '&select=content',
+      { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    if (!rows.length) return null;
+    try { return JSON.parse(rows[0].content); } catch { return rows[0].content; }
+  } catch(e) { return null; }
+}
+
+/* ═══════════════════════════════════════════
+   INTERVALS.ICU FETCH
+═══════════════════════════════════════════ */
+async function fetchIntervalsData() {
+  if (!CONFIG.intervalsId || !CONFIG.intervalsKey) return;
+  setStatus('loading');
+  try {
+    const auth = btoa('API_KEY:' + CONFIG.intervalsKey);
+    const headers = { 'Authorization': 'Basic ' + auth };
+    const now = new Date();
+    const fmt = d => d.toISOString().split('T')[0];
+    const oldest42 = new Date(now - 42 * 86400000);
+    const oldest90 = new Date(now - 90 * 86400000);
+    const [wR, aR] = await Promise.all([
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest42)}&newest=${fmt(now)}`, { headers }),
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldest90)}&newest=${fmt(now)}&limit=90`, { headers }),
+    ]);
+    intervalsCtx = {
+      wellness: wR.ok ? await wR.json() : [],
+      activities: aR.ok ? await aR.json() : []
+    };
+    updateSidebarStats();
+    setStatus('ok');
+  } catch(e) {
+    console.warn('fetchIntervalsData error:', e);
+    setStatus('err');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   STATUS DOT
+═══════════════════════════════════════════ */
+function setStatus(s) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + s;
+}
+
+/* ═══════════════════════════════════════════
+   MEMORY
+═══════════════════════════════════════════ */
+async function loadMem() {
+  // Load from v2_ keys, fall back to v1 mem_ keys
+  const [v2macro, v2weeks, v2flags, v2zones, v1macro, v1weeks, v1flags, v1zones, sa, chatH] = await Promise.all([
+    sbLoad('v2_macroplan'),
+    sbLoad('v2_weekplannen'),
+    sbLoad('v2_flags'),
+    sbLoad('v2_zones'),
+    sbLoad('mem_macroplan'),
+    sbLoad('mem_weekplannen'),
+    sbLoad('mem_flags'),
+    sbLoad('mem_zones'),
+    sbLoad('strava_analysis'),
+    sbLoad('v2_chat_history'),
+  ]);
+
+  MEM.macroplan = v2macro || v1macro || null;
+  MEM.weekplannen = v2weeks || v1weeks || [];
+  MEM.flags = v2flags || v1flags || [];
+  MEM.zones = v2zones || v1zones || null;
+  if (sa) stravaAnalysis = sa;
+
+  if (chatH?.messages?.length) {
+    messages = chatH.messages;
+    const container = document.getElementById('coach-messages');
+    document.getElementById('coach-welcome')?.remove();
+    messages.forEach(m => addMessage(m.role, m.content, false));
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+async function saveMem(type, data) {
+  MEM[type] = data;
+  await sbSave('v2_' + type, data);
+}
+
+/* ═══════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════ */
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('[data-tab]').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab)?.classList.add('active');
+  document.querySelectorAll('[data-tab="' + tab + '"]').forEach(el => el.classList.add('active'));
+  if (tab === 'planning') renderPlanningTab();
+}
+
+function updateSidebarStats() {
+  if (!intervalsCtx?.wellness?.length) return;
+  const wellness = intervalsCtx.wellness;
+  const latest = wellness[wellness.length - 1];
+  if (!latest) return;
+
+  const ctl = latest.ctl != null ? Math.round(latest.ctl) : null;
+  const atl = latest.atl != null ? Math.round(latest.atl) : null;
+  const tsb = (ctl != null && atl != null) ? Math.round(ctl - atl) : null;
+  const acwr = (ctl && atl && ctl > 0) ? (atl / ctl).toFixed(2) : null;
+
+  if (ctl != null) document.getElementById('stat-ctl').textContent = ctl;
+  if (atl != null) document.getElementById('stat-atl').textContent = atl;
+  if (tsb != null) {
+    const el = document.getElementById('stat-tsb');
+    el.textContent = (tsb > 0 ? '+' : '') + tsb;
+    el.className = 'stat-val ' + (tsb > 5 ? 'good' : tsb < -10 ? 'crit' : tsb < -5 ? 'warn' : '');
+  }
+  if (acwr != null) {
+    const el = document.getElementById('stat-acwr');
+    el.textContent = acwr;
+    const v = parseFloat(acwr);
+    el.className = 'stat-val ' + (v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
+  }
+
+  // Journey progress bar (weeks since training start to race)
+  const raceDate = new Date('2026-10-18');
+  const now = new Date();
+  const diff = raceDate - now;
+  if (diff > 0) {
+    const totalDays = 365; // ~1 year training block
+    const elapsed = totalDays - Math.floor(diff / 86400000);
+    const pct = Math.max(0, Math.min(100, (elapsed / totalDays) * 100));
+    document.getElementById('journey-fill').style.width = pct + '%';
+  }
+}
+
+function updateCountdown() {
+  const raceDate = new Date('2026-10-18T09:00:00');
+  const now = new Date();
+  const diff = raceDate - now;
+  if (diff > 0) {
+    const days = Math.floor(diff / 86400000);
+    document.getElementById('countdown-days').textContent = days;
+  }
+}
+
+function updateAthleteUI() {
+  const name = CONFIG.naam || 'Jule';
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('sidebar-name').textContent = name;
+
+  // Race / goal
+  const race = CONFIG.doel || 'Amsterdam Marathon';
+  document.getElementById('sidebar-race').textContent = race;
+
+  // Greeting
+  const uur = new Date().getHours();
+  const groet = uur < 12 ? 'Goedemorgen' : uur < 18 ? 'Goedemiddag' : 'Goedenavond';
+  const welcomeEl = document.getElementById('welcome-greeting');
+  if (welcomeEl) welcomeEl.textContent = groet + ', ' + name + '.';
+
+  // Model: use CONFIG.model if set
+  if (CONFIG.model) {
+    const sel = document.getElementById('model-select');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === CONFIG.model) { sel.selectedIndex = i; break; }
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════
+   PLANNING TAB RENDERER
+═══════════════════════════════════════════ */
+function renderPlanningTab() {
+  // Macroplan
+  const macroEl = document.getElementById('planning-macro-content');
+  if (MEM.macroplan) {
+    const txt = typeof MEM.macroplan === 'string' ? MEM.macroplan : JSON.stringify(MEM.macroplan, null, 2);
+    macroEl.innerHTML = '<div class="planning-card">' + escapeHtml(txt) + '</div>';
+  } else {
+    macroEl.innerHTML = '<div class="planning-empty">Nog geen macroplan.<br><button class="planning-action-btn" onclick="quickSend(\'Maak een macroplan voor de komende maanden richting mijn marathondoel. Inclueer periodisering, wekelijks volume en sleutelsessies. Sluit af met MACROPLAN_JSON.\');switchTab(\'chat\')">Macroplan aanvragen</button></div>';
+  }
+
+  // Most recent weekplan
+  const weekEl = document.getElementById('planning-week-content');
+  if (MEM.weekplannen && MEM.weekplannen.length) {
+    const latest = Array.isArray(MEM.weekplannen) ? MEM.weekplannen[MEM.weekplannen.length - 1] : MEM.weekplannen;
+    const txt = typeof latest === 'string' ? latest : JSON.stringify(latest, null, 2);
+    weekEl.innerHTML = '<div class="planning-card">' + escapeHtml(txt) + '</div>';
+    if (MEM.weekplannen.length > 1) {
+      weekEl.innerHTML += '<div style="font-size:11px;color:var(--muted);margin-top:6px;padding:0 2px">' + MEM.weekplannen.length + ' weekplannen opgeslagen</div>';
+    }
+  } else {
+    weekEl.innerHTML = '<div class="planning-empty">Nog geen weekplan.<br><button class="planning-action-btn" onclick="quickSend(\'Maak een weekschema voor deze week op basis van mijn CTL/ATL/TSB. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.\');switchTab(\'chat\')">Weekschema aanvragen</button></div>';
+  }
+
+  // Flags
+  const flagSec = document.getElementById('planning-flags-section');
+  const flagEl = document.getElementById('planning-flags-content');
+  const activeFlags = (MEM.flags || []).filter(f => !f.opgelost);
+  if (activeFlags.length) {
+    flagSec.style.display = 'block';
+    flagEl.innerHTML = activeFlags.map(f => {
+      const kleur = f.prioriteit === 'hoog' ? 'var(--danger)' : f.prioriteit === 'medium' ? 'var(--warning)' : 'var(--text2)';
+      return `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;border-left:3px solid ${kleur}">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px">${escapeHtml(f.tag || '')}</div>
+        <div style="font-size:13px;color:var(--text2)">${escapeHtml(f.omschrijving || '')}</div>
+        ${f.datum ? '<div style="font-size:11px;color:var(--muted);margin-top:4px">' + escapeHtml(f.datum) + '</div>' : ''}
+      </div>`;
+    }).join('');
+  } else {
+    flagSec.style.display = 'none';
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════
+   CHAT HELPERS
+═══════════════════════════════════════════ */
+function addMessage(role, content, scroll = true) {
+  document.getElementById('coach-welcome')?.remove();
+  const container = document.getElementById('coach-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap ' + role;
+
+  if (role === 'assistant') {
+    const lbl = document.createElement('div');
+    lbl.className = 'msg-label';
+    lbl.textContent = 'Coach';
+    wrap.appendChild(lbl);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble md';
+  if (role === 'assistant') {
+    bubble.innerHTML = mdToHtml(content);
+  } else {
+    bubble.textContent = content;
+  }
+  wrap.appendChild(bubble);
+  container.appendChild(wrap);
+  if (scroll) container.scrollTop = container.scrollHeight;
+}
+
+function addTyping() {
+  const container = document.getElementById('coach-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap assistant';
+  wrap.id = 'typing-indicator';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'msg-label';
+  lbl.textContent = 'Coach';
+  wrap.appendChild(lbl);
+
+  const dots = document.createElement('div');
+  dots.className = 'typing-dots';
+  for (let i = 0; i < 3; i++) {
+    const d = document.createElement('div');
+    d.className = 't-dot';
+    dots.appendChild(d);
+  }
+  wrap.appendChild(dots);
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  document.getElementById('typing-indicator')?.remove();
+}
+
+function updateSendBtn() {
+  const inp = document.getElementById('coach-input');
+  const btn = document.getElementById('coach-send');
+  const hasText = inp.value.trim().length > 0;
+  btn.classList.toggle('enabled', hasText && !isLoading);
+}
+
+function autoResizeInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  updateSendBtn();
+}
+
+function quickSend(text) {
+  const inp = document.getElementById('coach-input');
+  inp.value = text;
+  autoResizeInput(inp);
+  submitMessage();
+}
+
+/* ═══════════════════════════════════════════
+   MARKDOWN RENDERER
+═══════════════════════════════════════════ */
+function mdToHtml(text) {
+  if (!text) return '';
+  let s = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Code blocks
+  s = s.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
+    '<pre><code>' + code.trim() + '</code></pre>');
+
+  // Headers
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Bold + italic
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Inline code
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Unordered lists
+  s = s.replace(/((?:^[-*] .+\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => '<li>' + l.replace(/^[-*] /, '') + '</li>').join('');
+    return '<ul>' + items + '</ul>\n';
+  });
+
+  // Ordered lists
+  s = s.replace(/((?:^\d+\. .+\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => '<li>' + l.replace(/^\d+\. /, '') + '</li>').join('');
+    return '<ol>' + items + '</ol>\n';
+  });
+
+  // Blockquotes
+  s = s.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // Paragraphs (double newline)
+  s = s.split(/\n{2,}/).map(block => {
+    block = block.trim();
+    if (!block) return '';
+    if (/^<(h[1-6]|ul|ol|pre|blockquote)/.test(block)) return block;
+    return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+  }).join('\n');
+
+  return s;
+}
+
+/* ═══════════════════════════════════════════
+   SUBMIT MESSAGE (Claude API direct)
+═══════════════════════════════════════════ */
+async function submitMessage() {
+  const inp = document.getElementById('coach-input');
+  const text = inp.value.trim();
+  if (!text || isLoading) return;
+
+  isLoading = true;
+  inp.value = '';
+  inp.style.height = 'auto';
+  updateSendBtn();
+
+  messages.push({ role: 'user', content: text });
+  addMessage('user', text);
+  addTyping();
+
+  // Refresh intervals data on each message
+  try { await fetchIntervalsData(); } catch(e) {}
+
+  try {
+    const model = document.getElementById('model-select').value || CONFIG.model || 'claude-sonnet-4-6';
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CONFIG.claudeKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 8000,
+        system: buildSystemPrompt(),
+        messages: messages.slice(-40)
+      })
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.error?.message || 'HTTP ' + res.status);
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+    const reply = data.content[0].text;
+    messages.push({ role: 'assistant', content: reply });
+
+    removeTyping();
+    addMessage('assistant', reply);
+
+    parseCoachOutput(reply);
+    await sbSave('v2_chat_history', { messages: messages.slice(-60) });
+  } catch(e) {
+    removeTyping();
+    addMessage('assistant', '❌ Fout: ' + e.message);
+  }
+
+  isLoading = false;
+  updateSendBtn();
+  inp.focus();
+}
+
+/* ═══════════════════════════════════════════
+   PARSE COACH OUTPUT — save JSON blocks
+═══════════════════════════════════════════ */
+function extractJsonBlock(text, marker) {
+  const idx = text.indexOf(marker);
+  if (idx === -1) return null;
+  let start = text.indexOf('{', idx + marker.length);
+  if (start === -1) start = text.indexOf('[', idx + marker.length);
+  if (start === -1) return null;
+  const opener = text[start];
+  const closer = opener === '{' ? '}' : ']';
+  let depth = 0, i = start;
+  for (; i < text.length; i++) {
+    if (text[i] === opener) depth++;
+    else if (text[i] === closer) { depth--; if (depth === 0) break; }
+  }
+  return text.slice(start, i + 1);
+}
+
+async function parseCoachOutput(text) {
+  if (text.includes('MACROPLAN_JSON:')) {
+    const j = extractJsonBlock(text, 'MACROPLAN_JSON:');
+    if (j) { try { await saveMem('macroplan', JSON.parse(j)); } catch(e) {} }
+  }
+  if (text.includes('WEEKPLAN_JSON:')) {
+    const j = extractJsonBlock(text, 'WEEKPLAN_JSON:');
+    if (j) {
+      try {
+        const plan = JSON.parse(j);
+        const plans = Array.isArray(MEM.weekplannen) ? MEM.weekplannen : [];
+        plans.push(plan);
+        await saveMem('weekplannen', plans.slice(-10));
+      } catch(e) {}
+    }
+  }
+  if (text.includes('FLAG_JSON:')) {
+    const j = extractJsonBlock(text, 'FLAG_JSON:');
+    if (j) {
+      try {
+        const flag = JSON.parse(j);
+        if (!flag.datum) flag.datum = new Date().toISOString().split('T')[0];
+        const flags = Array.isArray(MEM.flags) ? MEM.flags : [];
+        const idx = flag.tag ? flags.findIndex(f => f.tag === flag.tag) : -1;
+        if (idx >= 0) flags[idx] = flag; else flags.push(flag);
+        await saveMem('flags', flags);
+      } catch(e) {}
+    }
+  }
+  if (text.includes('ZONES_JSON:')) {
+    const j = extractJsonBlock(text, 'ZONES_JSON:');
+    if (j) { try { await saveMem('zones', JSON.parse(j)); } catch(e) {} }
+  }
+}
+
+/* ═══════════════════════════════════════════
+   DATA HELPERS (from coach-light verbatim)
+═══════════════════════════════════════════ */
+function dagVanDatum(str) {
+  if (!str) return null;
+  const [y, m, d] = str.split('T')[0].split('-').map(Number);
+  const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  return dagen[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+function cleanActivity(a) {
+  return {
+    dag: dagVanDatum(a.start_date_local),
+    datum: a.start_date_local ? a.start_date_local.split('T')[0] : null,
+    type: a.type ?? null,
+    naam: a.name ?? null,
+    afstand_km: a.distance != null ? Math.round(a.distance / 100) / 10 : null,
+    duur_min: a.moving_time != null ? Math.round(a.moving_time / 60) : null,
+    hr_gem: a.average_heartrate != null ? Math.round(a.average_heartrate) : null,
+    hr_max: a.max_heartrate != null ? Math.round(a.max_heartrate) : null,
+    training_load: a.icu_training_load ?? null,
+    hoogtemeters: a.total_elevation_gain != null ? Math.round(a.total_elevation_gain) : null,
+  };
+}
+
+function cleanWellness(w) {
+  return {
+    dag: dagVanDatum(w.id),
+    datum: w.id ?? null,
+    ctl: w.ctl != null ? Math.round(w.ctl * 10) / 10 : null,
+    atl: w.atl != null ? Math.round(w.atl * 10) / 10 : null,
+    tsb: (w.ctl != null && w.atl != null) ? Math.round((w.ctl - w.atl) * 10) / 10 : null,
+    rust_hr: w.restingHR ?? null,
+    slaap_uren: w.sleepSecs != null ? Math.round(w.sleepSecs / 360) / 10 : null,
+    gewicht: w.weight ?? null,
+    vo2max: w.vo2max ?? null,
+  };
+}
+
+function stripNulls(arr) {
+  return (arr || []).map(item => {
+    const out = {};
+    for (const k in item) {
+      const v = item[k];
+      if (v !== null && v !== undefined && v !== '') out[k] = v;
+    }
+    return out;
+  });
+}
+
+function trimToFit(dataArr, maxChars, trimFromStart) {
+  let data = stripNulls(dataArr);
+  let json = JSON.stringify(data, null, 2);
+  while (json.length > maxChars && data.length > 1) {
+    data = trimFromStart ? data.slice(1) : data.slice(0, -1);
+    json = JSON.stringify(data, null, 2);
+  }
+  return json;
+}
+
+function computeTempoInzicht(corrData, zones) {
+  if (!corrData || corrData.length < 2) return null;
+  const BUCKET_SEC = {
+    '<4:30/km': 255, '4:30–5:00/km': 285, '5:00–5:30/km': 315,
+    '5:30–6:00/km': 345, '6:00–6:30/km': 375, '>6:30/km': 415,
+  };
+  const points = corrData
+    .filter(b => b.avg_hr && b.count >= 20 && BUCKET_SEC[b.label] != null)
+    .map(b => ({ hr: b.avg_hr, sec: BUCKET_SEC[b.label] }))
+    .sort((a, b) => a.hr - b.hr);
+  if (points.length < 2) return null;
+  function interpoleer(targetHR) {
+    if (targetHR <= points[0].hr || targetHR >= points[points.length-1].hr) return null;
+    for (let i = 0; i < points.length-1; i++) {
+      const lo = points[i], hi = points[i+1];
+      if (targetHR >= lo.hr && targetHR <= hi.hr) {
+        const t = (targetHR - lo.hr) / (hi.hr - lo.hr);
+        return lo.sec + t * (hi.sec - lo.sec);
+      }
+    }
+    return null;
+  }
+  function fmtPace(sec) {
+    if (!sec) return null;
+    return `${Math.floor(sec/60)}:${String(Math.round(sec%60)).padStart(2,'0')}`;
+  }
+  function fmtMarathon(sec) {
+    if (!sec) return null;
+    const total = sec * 42.195;
+    const h = Math.floor(total/3600);
+    const m = Math.round((total%3600)/60);
+    return `${h}u${String(m).padStart(2,'0')}`;
+  }
+  const zoneList = zones?.zones || [];
+  const z2 = zoneList.find(z => z.zone === 'Z2');
+  const z3 = zoneList.find(z => z.zone === 'Z3');
+  const z4 = zoneList.find(z => z.zone === 'Z4');
+  const hrMarathon = z3 ? (z3.hr_min + z3.hr_max)/2 : 147;
+  const hrRustig   = z2 ? (z2.hr_min + z2.hr_max)/2 : 133;
+  const hrDrempel  = z4 ? (z4.hr_min + z4.hr_max)/2 : 157;
+  const secMarathon = interpoleer(hrMarathon);
+  if (!secMarathon) return null;
+  return {
+    marathonTempo: fmtPace(secMarathon),
+    marathonTijd: fmtMarathon(secMarathon),
+    rustigTempo: fmtPace(interpoleer(hrRustig)),
+    drempelTempo: fmtPace(interpoleer(hrDrempel)),
+    hrMarathon: Math.round(hrMarathon),
+    hrRustig: Math.round(hrRustig),
+    hrDrempel: Math.round(hrDrempel),
+    dataPunten: points.map(p => `${fmtPace(p.sec)}/km → ${p.hr} bpm`).join(', '),
+  };
+}
+
+/* ═══════════════════════════════════════════
+   SYSTEM PROMPT
+═══════════════════════════════════════════ */
+function buildSystemPrompt() {
+  const naam = CONFIG.naam || 'Jule';
+
+  const profiel = `# ATLEETPROFIEL
+Naam: ${naam}
+Leeftijd: ${CONFIG.leeftijd || '?'} jaar
+Gewicht: ${CONFIG.gewicht || '?'} kg
+Max hartslag: ${CONFIG.maxHR || '190'} bpm
+Hoofddoel: ${CONFIG.doel || 'Amsterdam Marathon sub-4:00'}
+Conditieniveau: ${CONFIG.conditie || '?'}
+${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}`;
+
+  // Wellness + activities
+  const wellnessClean = (intervalsCtx?.wellness || []).map(cleanWellness)
+    .sort((a,b) => (a.datum||'').localeCompare(b.datum||''));
+  const activitiesClean = (intervalsCtx?.activities || []).map(cleanActivity)
+    .sort((a,b) => (a.datum||'').localeCompare(b.datum||''));
+
+  const wellnessJson = intervalsCtx ? trimToFit(wellnessClean.slice(-42), 6000, true) : '[]';
+  const activitiesJson = intervalsCtx ? trimToFit([...activitiesClean].reverse(), 12000, false) : '[]';
+
+  // MEM context
+  const memParts = [];
+  if (MEM.macroplan) memParts.push('MACROPLAN:\n' + JSON.stringify(MEM.macroplan));
+  if (MEM.weekplannen?.length) memParts.push('RECENTE WEEKPLANNINGEN:\n' + JSON.stringify(MEM.weekplannen.slice(-3)));
+  if (MEM.flags?.filter(f=>!f.opgelost).length) {
+    memParts.push('AANDACHTSPUNTEN (bereken hoe lang geleden o.b.v. "datum" vs. huidige datum — vertrouw nooit op relatieve tijdsaanduidingen in "omschrijving"):\n' + JSON.stringify(MEM.flags.filter(f=>!f.opgelost)));
+  }
+  if (MEM.zones) memParts.push('HARTSLAGZONES (empirisch):\n' + JSON.stringify(MEM.zones));
+  const memCtx = memParts.join('\n\n');
+
+  // Strava analysis
+  let stravaTxt = '';
+  if (stravaAnalysis) {
+    const inzicht = computeTempoInzicht(stravaAnalysis.data?.pace_hr_correlatie, MEM.zones);
+    const inzichtTxt = inzicht ? `
+BEREKENDE TEMPOS VOOR ${naam.toUpperCase()} (automatisch afgeleid via interpolatie — gebruik DEZE getallen, niet generieke tabellen):
+${inzicht.marathonTempo ? `- Marathontempo (Z3 ~${inzicht.hrMarathon} bpm): ${inzicht.marathonTempo}/km → geschatte marathontijd ${inzicht.marathonTijd}` : ''}
+${inzicht.drempelTempo ? `- Drempeltraining (Z4 ~${inzicht.hrDrempel} bpm): ${inzicht.drempelTempo}/km` : ''}
+${inzicht.rustigTempo ? `- Rustige/herstelrun (Z2 ~${inzicht.hrRustig} bpm): ${inzicht.rustigTempo}/km` : ''}
+Datapunten: ${inzicht.dataPunten}
+
+INSTRUCTIE: Bovenstaande tempos zijn de feitelijke grenswaarden. Als de berekening bijv. marathontempo 5:10/km geeft, adviseer 5:10–5:20/km — NIET 5:30 "om veilig te zijn". De data IS de veiligheid.` : '';
+    stravaTxt = `\n\n# STRAVA STREAMANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
+${inzichtTxt}
+${JSON.stringify(stravaAnalysis.data, null, 2)}`;
+  }
+
+  // Week dates
+  const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7;
+  const weekLines = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - dow + i);
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    weekLines.push(dagen[d.getDay()] + ' ' + dd + '-' + mm + '-' + d.getFullYear());
+  }
+
+  return `Je bent een persoonlijke marathoncoach voor ${naam}. Je spreekt Nederlands, bent direct en eerlijk, vermijdt vage adviezen.
+
+${profiel}
+
+# COACHSTIJL
+- Open met de kern, geen omhaal
+- Concrete cijfers en tijden, geen abstracte adviezen
+- Benoem alleen 2-3 belangrijkste factoren per antwoord
+- Eindig met een duidelijke coachbeslissing of actie
+- Gebruik TSB/CTL/ATL uit Intervals voor herstel/belasting interpretatie
+- Als een vraag lijkt op een eerdere vraag: ga ervan uit dat er nieuwe context is — reageer inhoudelijk
+- Schrijf NOOIT SQL — je hebt geen database-toegang
+
+# COACHFILOSOFIE — ${naam.toUpperCase()}
+- Data-gedreven: gebruik ALTIJD empirische pace-HR data als basis voor tempo-adviezen. Nooit generieke tabellen.
+- ${naam} streeft naar sub-4:00 op de marathon, mogelijk 3:50 op basis van haar actuele fitness. Wees NIET conservatief.
+- Als de data een bepaald tempo ondersteunt, adviseer dan dat tempo — geef GEEN veiligheidsmarge bovenop de data.
+- Marathonpotentie beoordelen op basis van pace-HR verhouding, NIET op absolute tijden.
+- Moedig haar capaciteit aan: als ze aangeeft dat ze meer aankan, neem dat serieus.
+- Volumeopbouw: max ~10% per week, maar afwijken mag als CTL/ATL/TSB en gevoel het toelaten.
+- TSB als sturingsmiddel: kwaliteit bij TSB > 0, herstel bij TSB < -10.
+- Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen bij duidelijke reden.
+- Sla macroplan op als MACROPLAN_JSON: {...}
+- Sla weekplan op als WEEKPLAN_JSON: {...}
+- Sla aandachtspunten op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false}. De datum wordt automatisch toegevoegd — NOOIT relatieve tijdsaanduidingen in "omschrijving".
+- Bij nieuwe empirische HR-zone data: sla op als ZONES_JSON: {"bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [...]}
+
+# TSB INTERPRETATIE
+TSB > +5: fris, kwaliteitswork mogelijk
+TSB -5 tot +5: normale belasting
+TSB -10 tot -5: functionele vermoeidheid, bewaken
+TSB < -10: herstel prioriteren
+
+# TRAININGSDATA (Intervals.icu) — ENIGE bron voor trainingsgeschiedenis
+Verzin NOOIT activiteiten, datums of cijfers die hier niet instaan.
+Gebruik voor de dagnaam ALTIJD het veld "dag" — reken dit nooit zelf uit.
+
+WELLNESS (laatste 42 dagen):
+${wellnessJson}
+
+ACTIVITEITEN (meest recent eerst):
+${activitiesJson}${stravaTxt}
+
+${memCtx ? '# COACHGEHEUGEN (gebruik voor planning/voorkeuren — NIET als bron voor wat er getraind is, dat staat in TRAININGSDATA)\n' + memCtx : ''}
+
+Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+Huidige week:
+${weekLines.join('\n')}
+KALENDERREGEL: Gebruik bovenstaande datums voor alle dag-naar-datum verwijzingen. Reken NOOIT zelf dag-naar-datum uit.`;
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+async function init() {
+  // Load config from localStorage
+  const stored = localStorage.getItem('coach-light-config');
+  if (stored) {
+    try { CONFIG = JSON.parse(stored); } catch(e) {}
+  }
+
+  // Validate required fields
+  if (!CONFIG.intervalsId || !CONFIG.intervalsKey || !CONFIG.claudeKey) {
+    document.getElementById('no-config').style.display = 'flex';
+    return;
+  }
+
+  // Show app
+  document.getElementById('app').style.display = 'flex';
+
+  // Set athlete name and model
+  updateAthleteUI();
+  updateCountdown();
+  setInterval(updateCountdown, 60000);
+
+  // Load memory from Supabase (parallel with intervals fetch)
+  const [,] = await Promise.all([
+    loadMem(),
+    fetchIntervalsData(),
+  ]);
+
+  // Render planning tab (data now available)
+  renderPlanningTab();
+}
+
+// Wire up input events
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('coach-input');
+  inp.addEventListener('input', () => autoResizeInput(inp));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitMessage(); }
+  });
+  document.getElementById('coach-send').addEventListener('click', submitMessage);
+  init();
+});
+</script>
+</body>
+</html>

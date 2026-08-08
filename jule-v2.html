@@ -826,11 +826,15 @@ h3 { font-size: 16px; font-weight: 600; }
       </div>
 
       <div class="sidebar-actions">
-        <button class="sidebar-action-btn" onclick="quickSend('Maak een adaptief weekschema voor de komende week op basis van mijn actuele CTL/ATL/TSB, trainingshistorie en hersteltoestand. Gebruik 80/20 polarisatie. Sluit af met een WEEKPLAN_JSON blok.');switchTab('chat')">
+        <button class="sidebar-action-btn" onclick="goToPlanning('planning-macro-section')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+          Macroschema
+        </button>
+        <button class="sidebar-action-btn" onclick="goToPlanning('planning-week-section')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           Weekschema
         </button>
-        <button class="sidebar-action-btn" onclick="quickSend('Analyseer mijn laatste training in detail: zones gerealiseerd, hartslag, tempo, TSS. Wat ging goed, wat kan beter, en wat betekent dit voor de komende 3 trainingen?');switchTab('chat')">
+        <button class="sidebar-action-btn" onclick="quickSend('Analyseer mijn laatste training in detail: zones gerealiseerd, hartslag, tempo, TSS. Wat ging goed, wat kan beter?');switchTab('chat')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Trainingsanalyse
         </button>
@@ -952,8 +956,8 @@ h3 { font-size: 16px; font-weight: 600; }
 
       <!-- PLANNING TAB -->
       <div id="tab-planning" class="tab-content">
-        <div class="planning-section">
-          <div class="planning-section-title">Macroplan</div>
+        <div class="planning-section" id="planning-macro-section">
+          <div class="planning-section-title">Macroschema</div>
           <div id="planning-macro-content">
             <div class="planning-empty">
               Nog geen macroplan. Vraag de coach om een macroplan op te stellen.
@@ -965,8 +969,8 @@ h3 { font-size: 16px; font-weight: 600; }
           </div>
         </div>
 
-        <div class="planning-section">
-          <div class="planning-section-title">Huidig weekplan</div>
+        <div class="planning-section" id="planning-week-section">
+          <div class="planning-section-title">Weekschema</div>
           <div id="planning-week-content">
             <div class="planning-empty">
               Nog geen weekplan. Vraag de coach om een weekschema.
@@ -1140,6 +1144,16 @@ function switchTab(tab) {
   document.querySelectorAll('[data-tab="' + tab + '"]').forEach(el => el.classList.add('active'));
   if (tab === 'planning') renderPlanningTab();
   if (tab === 'home') renderHomeTab();
+}
+
+function goToPlanning(sectionId) {
+  switchTab('planning');
+  if (sectionId) {
+    setTimeout(() => {
+      const el = document.getElementById(sectionId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
 }
 
 function updateSidebarStats() {

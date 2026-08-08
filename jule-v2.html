@@ -825,37 +825,26 @@ h3 { font-size: 16px; font-weight: 600; }
         </div>
       </div>
 
-      <div class="sidebar-actions">
-        <button class="sidebar-action-btn" onclick="goToPlanning('planning-macro-section')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
-          Macroschema
-        </button>
-        <button class="sidebar-action-btn" onclick="goToPlanning('planning-week-section')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Weekschema
-        </button>
-        <button class="sidebar-action-btn" onclick="quickSend('Analyseer mijn laatste training in detail: zones gerealiseerd, hartslag, tempo, TSS. Wat ging goed, wat kan beter?');switchTab('chat')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Trainingsanalyse
-        </button>
-        <button class="sidebar-action-btn" onclick="quickSend('Check-in: hoe staat mijn herstel ervoor? Bespreek TSB-trend, CTL-opbouw en of ik klaar ben voor de volgende belasting. Wees direct en concreet.');switchTab('chat')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          Check-in
-        </button>
-      </div>
-
       <div class="sidebar-tabs">
         <button class="sidebar-tab active" data-tab="home" onclick="switchTab('home')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Home
         </button>
-        <button class="sidebar-tab" data-tab="chat" onclick="switchTab('chat')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Chat
+        <button class="sidebar-tab" data-tab="analyse" onclick="switchTab('analyse')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Analyse
         </button>
         <button class="sidebar-tab" data-tab="planning" onclick="switchTab('planning')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           Planning
+        </button>
+        <button class="sidebar-tab" data-tab="status" onclick="switchTab('status')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Status
+        </button>
+        <button class="sidebar-tab" data-tab="chat" onclick="switchTab('chat')" style="margin-top:auto">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat
         </button>
       </div>
     </aside>
@@ -863,11 +852,13 @@ h3 { font-size: 16px; font-weight: 600; }
     <!-- Main panel -->
     <main id="main-panel">
 
-      <!-- Desktop tab bar -->
+      <!-- Desktop tab bar (hidden on desktop — sidebar handles nav) -->
       <div class="tab-bar-desktop">
         <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">Home</button>
-        <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">Chat</button>
+        <button class="tab-btn" data-tab="analyse" onclick="switchTab('analyse')">Analyse</button>
         <button class="tab-btn" data-tab="planning" onclick="switchTab('planning')">Planning</button>
+        <button class="tab-btn" data-tab="status" onclick="switchTab('status')">Status</button>
+        <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">Chat</button>
       </div>
 
       <!-- HOME TAB -->
@@ -954,6 +945,32 @@ h3 { font-size: 16px; font-weight: 600; }
         </div>
       </div>
 
+      <!-- ANALYSE TAB -->
+      <div id="tab-analyse" class="tab-content">
+        <div id="analyse-scroll" style="overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px">
+          <div id="analyse-content"><div style="padding:40px 0;text-align:center;color:var(--text2);font-size:13px">Trainingsdata laden…</div></div>
+          <div style="padding:16px 0 0">
+            <button class="btn btn-secondary btn-full" onclick="quickSend('Analyseer mijn laatste training in detail: zones gerealiseerd, hartslag, tempo, TSS. Wat ging goed, wat kan beter, en wat betekent dit voor de komende week?');switchTab('chat')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Bespreek met de coach
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATUS TAB -->
+      <div id="tab-status" class="tab-content">
+        <div id="status-scroll" style="overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px">
+          <div id="status-content"><div style="padding:40px 0;text-align:center;color:var(--text2);font-size:13px">Statusdata laden…</div></div>
+          <div style="padding:16px 0 0">
+            <button class="btn btn-secondary btn-full" onclick="quickSend('Check-in: hoe staat mijn herstel ervoor op basis van de actuele data? TSB-trend, CTL-opbouw, slaap. Wees direct en concreet.');switchTab('chat')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Check-in met de coach
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- PLANNING TAB -->
       <div id="tab-planning" class="tab-content">
         <div class="planning-section" id="planning-macro-section">
@@ -997,13 +1014,21 @@ h3 { font-size: 16px; font-weight: 600; }
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Home
     </button>
-    <button class="btm-tab" data-tab="chat" onclick="switchTab('chat')">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Chat
+    <button class="btm-tab" data-tab="analyse" onclick="switchTab('analyse')">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Analyse
     </button>
     <button class="btm-tab" data-tab="planning" onclick="switchTab('planning')">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Planning
+    </button>
+    <button class="btm-tab" data-tab="status" onclick="switchTab('status')">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Status
+    </button>
+    <button class="btm-tab" data-tab="chat" onclick="switchTab('chat')">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Chat
     </button>
   </div>
 
@@ -1144,6 +1169,8 @@ function switchTab(tab) {
   document.querySelectorAll('[data-tab="' + tab + '"]').forEach(el => el.classList.add('active'));
   if (tab === 'planning') renderPlanningTab();
   if (tab === 'home') renderHomeTab();
+  if (tab === 'analyse') renderAnalyseTab();
+  if (tab === 'status') renderStatusTab();
 }
 
 function goToPlanning(sectionId) {
@@ -1192,8 +1219,10 @@ function updateSidebarStats() {
     document.getElementById('journey-fill').style.width = pct + '%';
   }
 
-  // Also refresh home tab stats if on home
-  if (currentTab === 'home') renderHomeTab();
+  // Refresh data-dependent tabs
+  renderHomeTab();
+  renderAnalyseTab();
+  renderStatusTab();
 }
 
 function updateCountdown() {
@@ -1228,6 +1257,165 @@ function updateAthleteUI() {
       if (sel.options[i].value === CONFIG.model) { sel.selectedIndex = i; break; }
     }
   }
+}
+
+/* ═══════════════════════════════════════════
+   ANALYSE TAB RENDERER
+═══════════════════════════════════════════ */
+function renderAnalyseTab() {
+  const el = document.getElementById('analyse-content');
+  if (!el) return;
+
+  const acts = (intervalsCtx?.activities || [])
+    .map(cleanActivity)
+    .filter(a => a.type && a.datum)
+    .sort((a, b) => (b.datum || '').localeCompare(a.datum || ''))
+    .slice(0, 10);
+
+  let html = '';
+
+  // Recent activities
+  html += '<div class="planning-section-title" style="margin-bottom:10px">Recente trainingen</div>';
+  if (acts.length) {
+    acts.forEach(a => {
+      const typeKleur = a.type === 'Run' ? 'var(--accent)' : a.type === 'Ride' ? 'var(--cyan)' : 'var(--text2)';
+      html += `<div class="week-dag-card" style="border-left:3px solid ${typeKleur}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(a.naam || a.type || '—')}</div>
+          <div style="font-size:11px;color:var(--muted)">${escapeHtml(a.datum || '')} <span style="text-transform:capitalize">(${escapeHtml(a.dag || '')})</span></div>
+        </div>
+        <div class="week-dag-pills">
+          ${a.afstand_km ? `<span class="pill">${a.afstand_km} km</span>` : ''}
+          ${a.duur_min ? `<span class="pill">${a.duur_min} min</span>` : ''}
+          ${a.hr_gem ? `<span class="pill">${a.hr_gem} bpm</span>` : ''}
+          ${a.training_load ? `<span class="pill">TSS ${a.training_load}</span>` : ''}
+          ${a.hoogtemeters ? `<span class="pill">↑${a.hoogtemeters}m</span>` : ''}
+        </div>
+      </div>`;
+    });
+  } else {
+    html += '<div class="planning-empty">Geen trainingsdata beschikbaar. Controleer je Intervals.icu instellingen.</div>';
+  }
+
+  // Pace-HR correlation if available
+  if (stravaAnalysis?.data?.pace_hr_correlatie?.length) {
+    html += '<div class="planning-section-title" style="margin:20px 0 10px">Pace-hartslag correlatie</div>';
+    const corr = stravaAnalysis.data.pace_hr_correlatie;
+    const inzicht = computeTempoInzicht(corr, MEM.zones);
+    if (inzicht) {
+      html += `<div class="card card-sm" style="margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${inzicht.marathonTempo ? `<div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Marathontempo</div><div style="font-size:18px;font-weight:700;color:var(--accent)">${escapeHtml(inzicht.marathonTempo)}<span style="font-size:12px;color:var(--text2)">/km</span></div><div style="font-size:11px;color:var(--muted)">~${escapeHtml(inzicht.marathonTijd)}</div></div>` : ''}
+          ${inzicht.rustigTempo ? `<div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Rustig lopen</div><div style="font-size:18px;font-weight:700;color:var(--success)">${escapeHtml(inzicht.rustigTempo)}<span style="font-size:12px;color:var(--text2)">/km</span></div><div style="font-size:11px;color:var(--muted)">Z2 ~${inzicht.hrRustig} bpm</div></div>` : ''}
+          ${inzicht.drempelTempo ? `<div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Drempeltraining</div><div style="font-size:18px;font-weight:700;color:var(--warning)">${escapeHtml(inzicht.drempelTempo)}<span style="font-size:12px;color:var(--text2)">/km</span></div><div style="font-size:11px;color:var(--muted)">Z4 ~${inzicht.hrDrempel} bpm</div></div>` : ''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">Datapunten: ${escapeHtml(inzicht.dataPunten)}</div>
+      </div>`;
+    }
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    corr.forEach(b => {
+      if (!b.avg_hr || !b.count) return;
+      html += `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:8px 12px;font-size:12px">
+        <div style="font-weight:600;color:var(--text)">${escapeHtml(b.label)}</div>
+        <div style="color:var(--text2)">${Math.round(b.avg_hr)} bpm</div>
+        <div style="color:var(--muted);font-size:11px">${b.count} min data</div>
+      </div>`;
+    });
+    html += '</div>';
+    html += `<div style="font-size:11px;color:var(--muted);margin-top:6px">Bron: ${escapeHtml(stravaAnalysis.naam || '')} — ${escapeHtml(stravaAnalysis.datum || '')}</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════
+   STATUS TAB RENDERER
+═══════════════════════════════════════════ */
+function renderStatusTab() {
+  const el = document.getElementById('status-content');
+  if (!el) return;
+
+  const wellness = (intervalsCtx?.wellness || [])
+    .map(cleanWellness)
+    .filter(w => w.datum)
+    .sort((a, b) => (a.datum || '').localeCompare(b.datum || ''))
+    .slice(-21);
+
+  let html = '';
+
+  // Current status
+  if (wellness.length) {
+    const latest = wellness[wellness.length - 1];
+    const tsb = latest.tsb;
+    const tsbKleur = tsb > 5 ? 'var(--success)' : tsb < -10 ? 'var(--danger)' : tsb < -5 ? 'var(--warning)' : 'var(--text)';
+    const tsbLabel = tsb > 5 ? 'Fris — kwaliteit mogelijk' : tsb < -10 ? 'Herstel prioriteit' : tsb < -5 ? 'Functionele vermoeidheid' : 'Normale belasting';
+    const acwr = (latest.ctl && latest.atl) ? latest.atl / latest.ctl : null;
+    const acwrKleur = !acwr ? 'var(--text2)' : acwr <= 1.3 ? 'var(--success)' : acwr <= 1.5 ? 'var(--warning)' : 'var(--danger)';
+
+    html += `<div class="card" style="margin-bottom:12px">
+      <div class="label" style="margin-bottom:12px">Hersteltoestand nu</div>
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:2px">TSB</div>
+          <div style="font-size:32px;font-weight:700;color:${tsbKleur};font-variant-numeric:tabular-nums">${tsb != null ? (tsb > 0 ? '+' : '') + tsb : '—'}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${escapeHtml(tsbLabel)}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-width:140px">
+          <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em">CTL</div><div style="font-size:20px;font-weight:700">${latest.ctl != null ? latest.ctl : '—'}</div></div>
+          <div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em">ATL</div><div style="font-size:20px;font-weight:700">${latest.atl != null ? latest.atl : '—'}</div></div>
+          ${acwr ? `<div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em">ACWR</div><div style="font-size:20px;font-weight:700;color:${acwrKleur}">${acwr.toFixed(2)}</div></div>` : ''}
+          ${latest.rust_hr ? `<div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em">Rust-HR</div><div style="font-size:20px;font-weight:700">${latest.rust_hr}</div></div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Wellness trend table (last 14 days)
+  html += '<div class="planning-section-title" style="margin-bottom:10px">Trend (afgelopen 3 weken)</div>';
+  if (wellness.length) {
+    html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+    html += '<thead><tr style="border-bottom:1px solid var(--border2)">';
+    ['Datum','Dag','CTL','ATL','TSB','Rust-HR','Slaap'].forEach(h => {
+      html += `<th style="padding:6px 8px;text-align:right;color:var(--text2);font-weight:600;white-space:nowrap;font-size:10px;letter-spacing:.06em;text-transform:uppercase">${h}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    [...wellness].reverse().slice(0, 21).forEach((w, i) => {
+      const tsb = w.tsb;
+      const tsbColor = tsb == null ? '' : tsb > 5 ? 'color:var(--success)' : tsb < -10 ? 'color:var(--danger)' : tsb < -5 ? 'color:var(--warning)' : '';
+      const rowBg = i === 0 ? 'background:var(--surface2)' : '';
+      html += `<tr style="border-bottom:1px solid var(--border);${rowBg}">
+        <td style="padding:5px 8px;color:var(--text2);white-space:nowrap">${escapeHtml(w.datum || '')}</td>
+        <td style="padding:5px 8px;color:var(--muted);text-transform:capitalize">${escapeHtml(w.dag || '')}</td>
+        <td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">${w.ctl != null ? w.ctl : '—'}</td>
+        <td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums">${w.atl != null ? w.atl : '—'}</td>
+        <td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums;${tsbColor}">${tsb != null ? (tsb > 0 ? '+' : '') + tsb : '—'}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--text2)">${w.rust_hr || '—'}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--text2)">${w.slaap_uren ? w.slaap_uren + 'u' : '—'}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+
+    // Zones
+    if (MEM.zones?.zones?.length) {
+      html += '<div class="planning-section-title" style="margin:20px 0 10px">Hartslagzones</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      MEM.zones.zones.forEach(z => {
+        html += `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r-sm);padding:8px 12px;font-size:12px">
+          <div style="font-weight:600;color:var(--text)">${escapeHtml(z.zone)} <span style="font-weight:400;color:var(--text2)">${escapeHtml(z.naam || '')}</span></div>
+          <div style="color:var(--accent);margin-top:2px">${z.hr_min ? z.hr_min + '–' : '<'}${z.hr_max || '?'} bpm</div>
+          ${z.tempo_min_km ? `<div style="color:var(--muted);font-size:11px">${escapeHtml(z.tempo_min_km)}/km</div>` : ''}
+        </div>`;
+      });
+      html += '</div>';
+      if (MEM.zones.calibratie_datum) {
+        html += `<div style="font-size:11px;color:var(--muted);margin-top:6px">Gecalibreerd: ${escapeHtml(MEM.zones.calibratie_datum)} — ${escapeHtml(MEM.zones.bron || '')}</div>`;
+      }
+    }
+  } else {
+    html += '<div class="planning-empty">Geen wellnessdata beschikbaar. Controleer je Intervals.icu instellingen.</div>';
+  }
+
+  el.innerHTML = html;
 }
 
 /* ═══════════════════════════════════════════
@@ -1951,9 +2139,11 @@ async function init() {
     fetchIntervalsData(),
   ]);
 
-  // Render tabs with loaded data
+  // Render all tabs with loaded data
   renderHomeTab();
   renderPlanningTab();
+  renderAnalyseTab();
+  renderStatusTab();
 }
 
 // Wire up input events

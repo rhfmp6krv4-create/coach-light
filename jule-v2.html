@@ -1000,18 +1000,14 @@ body.tab-home .sidebar-hero .journey-bar-track { display: none; }
             <div id="home-today-content" style="font-size:14px;color:var(--text2);line-height:1.6">Weekplan wordt geladen…</div>
           </div>
 
-          <div class="home-actions">
-            <button class="btn btn-primary btn-full" onclick="switchTab('chat');setTimeout(()=>document.getElementById('coach-input').focus(),200)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Stel een vraag aan de coach
-            </button>
-          </div>
-
-          <div class="quick-row" style="padding-top:12px">
-            <button class="quick-btn" onclick="quickSend('Check-in: hoe sta ik ervoor qua herstel en belasting?');switchTab('chat')">Check-in</button>
-            <button class="quick-btn" onclick="quickSend('Wat is de training voor vandaag?');switchTab('chat')">Training vandaag</button>
-            <button class="quick-btn" onclick="quickSend('Maak een weekschema voor komende week op basis van mijn CTL/ATL/TSB. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.');switchTab('chat')">Weekschema</button>
-            <button class="quick-btn" onclick="switchTab('planning')">Planning →</button>
+          <div class="card home-insight-card" id="home-insight-card" style="margin-top:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Coach inzicht</span>
+            </div>
+            <div id="home-insight" style="font-size:13.5px;line-height:1.65;color:var(--text2)">
+              <span style="color:var(--muted)">Analyse wordt geladen…</span>
+            </div>
           </div>
 
         </div>
@@ -1940,6 +1936,67 @@ function renderHomeTab() {
         + '<br><button class="planning-action-btn" style="margin-top:8px" onclick="quickSend(\'Maak een weekschema voor deze week op basis van mijn CTL/ATL/TSB. 80/20 polarisatie. Sluit af met WEEKPLAN_JSON.\');switchTab(\'chat\')">Weekschema aanvragen</button>';
     }
   }
+
+  generateHomeInsight();
+}
+
+async function generateHomeInsight() {
+  const el = document.getElementById('home-insight');
+  if (!el) return;
+
+  // Build a fingerprint to detect when data actually changed
+  const w = intervalsCtx?.wellness;
+  const latest = w?.length ? w[w.length - 1] : null;
+  const ctl = latest?.ctl != null ? Math.round(latest.ctl) : null;
+  const atl = latest?.atl != null ? Math.round(latest.atl) : null;
+  const tsb = (ctl != null && atl != null) ? Math.round(ctl - atl) : null;
+  const flagCount = (MEM.flags || []).length;
+  const weekCount = (MEM.weekplannen || []).length;
+  const fingerprint = `${ctl}-${atl}-${tsb}-${flagCount}-${weekCount}`;
+
+  if (_homeInsightCache?.key === fingerprint) {
+    el.innerHTML = _homeInsightCache.html;
+    return;
+  }
+
+  if (ctl == null && !flagCount) {
+    el.innerHTML = '<span style="color:var(--muted)">Nog niet genoeg data om een analyse te geven. Koppel Intervals.icu in de instellingen.</span>';
+    return;
+  }
+
+  el.innerHTML = '<span style="color:var(--muted)">Analyse wordt opgesteld…</span>';
+
+  // Build a compact context for the prompt
+  const lines = [];
+  if (ctl != null) lines.push(`CTL ${ctl} · ATL ${atl} · TSB ${tsb > 0 ? '+' : ''}${tsb}`);
+  const acwr = ctl && atl && ctl > 0 ? (atl / ctl).toFixed(2) : null;
+  if (acwr) lines.push(`ACWR ${acwr}`);
+  const td = getTodayFromWeekplan();
+  if (td?.type) lines.push(`Training vandaag: ${td.type}${td.duur_min ? ' ' + td.duur_min + ' min' : ''}`);
+  const flags = (MEM.flags || []).slice(0, 4);
+  if (flags.length) lines.push('Aandachtspunten: ' + flags.map(f => f.tekst || f).join(', '));
+
+  const model = document.getElementById('model-select')?.value || 'claude-haiku-4-5';
+  try {
+    const res = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        max_tokens: 180,
+        system: 'Je bent een bondige, directe hardloopcoach. Geef exact 2-3 zinnen als inline tekst (geen bullets, geen headers). Gebruik de data om één concreet inzicht te geven over de huidige trainingstoestand.',
+        messages: [{ role: 'user', content: 'Geef een korte coach-analyse:\n' + lines.join('\n') }]
+      })
+    });
+    if (!res.ok) throw new Error('proxy ' + res.status);
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    const html = escapeHtml(text).replace(/\n/g, '<br>');
+    _homeInsightCache = { key: fingerprint, html };
+    el.innerHTML = html;
+  } catch {
+    el.innerHTML = '<span style="color:var(--muted)">Analyse tijdelijk niet beschikbaar.</span>';
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -2545,6 +2602,7 @@ function computeTempoInzicht(corrData, zones) {
    VOEDING TAB
 ═══════════════════════════════════════════ */
 let _voedingMaaltijd = 'ochtend';
+let _homeInsightCache = null; // { key, html } — refreshed when data fingerprint changes
 
 function switchMeal(m) {
   _voedingMaaltijd = m;

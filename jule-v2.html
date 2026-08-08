@@ -1576,7 +1576,7 @@ async function fetchIntervalsData() {
     const oldest90 = new Date(now - 90 * 86400000);
     const [wR, aR] = await Promise.all([
       fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest42)}&newest=${fmt(now)}`, { headers }),
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldest90)}&newest=${fmt(now)}&limit=90&fields=gear_name`, { headers }),
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldest90)}&newest=${fmt(now)}&limit=90`, { headers }),
     ]);
     intervalsCtx = {
       wellness: wR.ok ? await wR.json() : [],

@@ -414,13 +414,47 @@ h3 { font-size: 16px; font-weight: 600; }
   font-variant-numeric: tabular-nums;
 }
 
-/* Journey progress bar */
-body.tab-home .sidebar-hero,
+/* ── Sidebar top slot: fixed height, logo ↔ tiles swap without layout shift ── */
+.sidebar-top-slot {
+  height: 190px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.sidebar-logo-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.logo-circle-clip {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 6px 24px rgba(0,0,0,0.45);
+}
+/* Sub-pages: tiles fill the same slot, logo hidden */
+body:not(.tab-home) .sidebar-logo-area { display: none; }
+body:not(.tab-home) .sidebar-stats {
+  display: grid;
+  position: absolute;
+  inset: 0;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 16px;
+  align-content: center;
+}
+/* Home: tiles hidden, progress bar hidden (shown large in main content) */
 body.tab-home .sidebar-stats { display: none; }
-/* Logo alleen op Home — op andere tabs komen hero+stats terug en het logo is overbodig */
-body:not(.tab-home) .race-logo-wrap { display: none !important; }
-/* Name + goal label verbergen in sidebar — staat al in top-nav en/of home hero */
-#sidebar-name, #sidebar-race { display: none; }
+body.tab-home .sidebar-progress { display: none; }
+
+/* Sidebar progress (sub-pages) */
+.sidebar-progress {
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Journey progress bar */
 .journey-bar-track {
   margin-top: 14px;
   height: 2px;
@@ -444,12 +478,9 @@ body:not(.tab-home) .race-logo-wrap { display: none !important; }
   background: var(--cyan);
 }
 
-/* Stats grid */
+/* Stats grid — base style; display/position set by tab-state rules above */
 .sidebar-stats {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: none; /* default hidden; tab-state rules override */
   gap: 10px;
 }
 .stat-card {
@@ -880,9 +911,40 @@ body:not(.tab-home) .race-logo-wrap { display: none !important; }
 
     <!-- Sidebar (desktop) -->
     <aside id="sidebar">
-      <div class="sidebar-hero">
-        <div class="sidebar-name" id="sidebar-name">Jule</div>
-        <div class="sidebar-race" id="sidebar-race">Amsterdam Marathon</div>
+      <!-- Fixed-height top slot: logo on Home, stat tiles on sub-pages -->
+      <div class="sidebar-top-slot">
+
+        <!-- Logo (Home tab only) -->
+        <div class="sidebar-logo-area" id="race-logo-wrap">
+          <div class="logo-circle-clip">
+            <img id="race-logo" alt="Race logo" style="width:100%;height:100%;object-fit:cover;display:block">
+          </div>
+        </div>
+
+        <!-- Stat tiles (sub-pages only) -->
+        <div class="sidebar-stats">
+          <div class="stat-card">
+            <div class="stat-val" id="stat-ctl">—</div>
+            <div class="stat-lbl">CTL</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-atl">—</div>
+            <div class="stat-lbl">ATL</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-tsb">—</div>
+            <div class="stat-lbl">TSB</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-acwr">—</div>
+            <div class="stat-lbl">ACWR</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Progress bar — shown on sub-pages only -->
+      <div class="sidebar-progress">
         <div class="sidebar-countdown">
           <strong id="countdown-days">—</strong> dagen te gaan
         </div>
@@ -891,30 +953,9 @@ body:not(.tab-home) .race-logo-wrap { display: none !important; }
         </div>
       </div>
 
-      <div class="sidebar-stats">
-        <div class="stat-card">
-          <div class="stat-val" id="stat-ctl">—</div>
-          <div class="stat-lbl">CTL</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-atl">—</div>
-          <div class="stat-lbl">ATL</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-tsb">—</div>
-          <div class="stat-lbl">TSB</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-acwr">—</div>
-          <div class="stat-lbl">ACWR</div>
-        </div>
-      </div>
-
-      <div class="race-logo-wrap" id="race-logo-wrap" style="display:none;justify-content:center;padding:20px 24px 12px">
-        <div style="width:130px;height:130px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 6px 24px rgba(0,0,0,0.45)">
-          <img id="race-logo" alt="Race logo" style="width:100%;height:100%;object-fit:cover;display:block">
-        </div>
-      </div>
+      <!-- Hidden refs kept for JS -->
+      <span id="sidebar-name" style="display:none"></span>
+      <span id="sidebar-race" style="display:none"></span>
 
       <div class="sidebar-tabs">
         <button class="sidebar-tab active" data-tab="home" onclick="switchTab('home')">
@@ -1708,9 +1749,7 @@ async function loadRaceLogo(url) {
   if (!wrap || !imgEl || !url) return;
 
   const applyDirect = () => {
-    // Circular container handles clipping — just set src and show
     imgEl.src = url;
-    wrap.style.display = 'flex';
   };
 
   try {
@@ -1739,10 +1778,8 @@ async function loadRaceLogo(url) {
         ctx.putImageData(d, 0, 0);
         imgEl.src = canvas.toDataURL('image/png');
         URL.revokeObjectURL(blobUrl);
-        wrap.style.display = 'flex';
       } catch {
         imgEl.src = blobUrl;
-        wrap.style.display = 'flex';
       }
     };
     img.onerror = applyDirect;

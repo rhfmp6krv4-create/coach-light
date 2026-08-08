@@ -753,6 +753,65 @@ h3 { font-size: 16px; font-weight: 600; }
   margin: 6px 0 4px;
 }
 
+/* ─── VOEDING ─── */
+.voeding-scroll { overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px }
+.voeding-macros { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px }
+.macro-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px }
+.macro-label { font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px }
+.macro-val { font-size:28px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums }
+.macro-unit { font-size:13px;color:var(--text2);margin-left:2px }
+.macro-target { font-size:11px;color:var(--muted);margin:2px 0 8px }
+.macro-bar { background:rgba(100,140,255,.1);border-radius:3px;height:4px;overflow:hidden }
+.macro-bar-fill { height:100%;border-radius:3px;transition:width .6s }
+.meal-tabs { display:flex;gap:6px;margin-bottom:10px }
+.meal-tab { flex:1;padding:7px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:background .12s,color .12s }
+.meal-tab.active { background:var(--surface2);border-color:var(--accent);color:var(--text) }
+.meal-log { display:none;margin-bottom:12px;min-height:36px }
+.meal-log.active { display:block }
+.meal-entry { display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px }
+.meal-entry:last-child { border-bottom:none }
+.meal-entry-del { background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0 4px;font-family:var(--font) }
+.meal-entry-del:hover { color:var(--danger) }
+.meal-log-empty { font-size:13px;color:var(--muted);padding:8px 0 }
+.food-add-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:14px }
+.food-input { width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:8px 10px;font-family:var(--font);margin-bottom:8px;box-sizing:border-box }
+.food-input:focus { outline:none;border-color:var(--accent) }
+.food-input-label { font-size:10px;color:var(--text2);font-weight:600;margin-bottom:3px;letter-spacing:.04em;text-transform:uppercase }
+.food-input-row { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px }
+.lvd-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:14px }
+.lvd-inputs { display:flex;gap:10px;margin-bottom:10px }
+
+/* ─── KRACHT ─── */
+.kracht-scroll { overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px }
+.kracht-rec-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px 14px 19px;margin-bottom:14px;position:relative;overflow:hidden }
+.kracht-rec-card::before { content:'';position:absolute;top:0;bottom:0;left:0;width:3px;background:linear-gradient(180deg,#34D399 0%,#059669 100%) }
+.kracht-rec-eyebrow { font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#34D399;margin-bottom:6px }
+.kracht-rec-title { font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px }
+.kracht-rec-meta { font-size:13px;color:var(--text2);margin-bottom:10px }
+.routine-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px }
+.routine-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 12px;cursor:pointer;font-family:var(--font);text-align:left;display:flex;flex-direction:column;gap:3px;transition:background .12s;-webkit-tap-highlight-color:transparent }
+.routine-card:hover { background:var(--surface2) }
+.routine-card.started { border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.04) }
+.routine-card-icon { font-size:22px;margin-bottom:4px }
+.routine-card-name { font-size:13px;font-weight:600;color:var(--text);line-height:1.3 }
+.routine-card-meta { font-size:11px;color:var(--muted) }
+.routine-section-label { font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px }
+.kracht-history-item { display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px }
+.kracht-history-item:last-child { border-bottom:none }
+
+/* ─── FYSIO ─── */
+.fysio-scroll { overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px }
+.injury-banner { background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:14px 16px;margin-bottom:14px }
+.fysio-phase { display:none }
+.fysio-phase.active { display:block }
+.fysio-region-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px }
+.fysio-region-btn { background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 8px;cursor:pointer;font-family:var(--font);color:var(--text2);font-size:12px;font-weight:500;text-align:center;transition:background .12s,border-color .12s,color .12s;-webkit-tap-highlight-color:transparent }
+.fysio-region-btn.selected { background:rgba(79,142,247,.1);border-color:var(--accent);color:var(--text) }
+.v3chip { background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;cursor:pointer;font-family:var(--font);color:var(--text2);font-size:13px;text-align:left;width:100%;margin-bottom:6px;transition:background .12s,border-color .12s;-webkit-tap-highlight-color:transparent;display:block }
+.v3chip.selected { background:rgba(251,191,36,.08);border-color:var(--warning);color:var(--text) }
+.injury-history-item { display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border) }
+.injury-history-item:last-child { border-bottom:none }
+
 /* ─── DESKTOP OVERRIDES ─── */
 @media (min-width: 768px) {
   #top-nav { padding: 0 24px; }
@@ -760,6 +819,9 @@ h3 { font-size: 16px; font-weight: 600; }
   .tab-bar-desktop { display: flex; }
   #bottom-nav { display: none; }
   #tab-planning { padding: 24px; }
+  #tab-voeding { padding: 0; }
+  #tab-kracht { padding: 0; }
+  #tab-fysio { padding: 0; }
 }
 
 /* No-config overlay */
@@ -842,6 +904,18 @@ h3 { font-size: 16px; font-weight: 600; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Status
         </button>
+        <button class="sidebar-tab" data-tab="voeding" onclick="switchTab('voeding')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+          Voeding
+        </button>
+        <button class="sidebar-tab" data-tab="kracht" onclick="switchTab('kracht')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M6.5 6.5h11m-11 5h11m-11 5h11M3 6.5h.5M3 11.5h.5M3 16.5h.5M20.5 6.5H21M20.5 11.5H21M20.5 16.5H21"/></svg>
+          Kracht
+        </button>
+        <button class="sidebar-tab" data-tab="fysio" onclick="switchTab('fysio')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Fysio
+        </button>
         <button class="sidebar-tab" data-tab="chat" onclick="switchTab('chat')" style="margin-top:auto">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Chat
@@ -858,6 +932,9 @@ h3 { font-size: 16px; font-weight: 600; }
         <button class="tab-btn" data-tab="analyse" onclick="switchTab('analyse')">Analyse</button>
         <button class="tab-btn" data-tab="planning" onclick="switchTab('planning')">Planning</button>
         <button class="tab-btn" data-tab="status" onclick="switchTab('status')">Status</button>
+        <button class="tab-btn" data-tab="voeding" onclick="switchTab('voeding')">Voeding</button>
+        <button class="tab-btn" data-tab="kracht" onclick="switchTab('kracht')">Kracht</button>
+        <button class="tab-btn" data-tab="fysio" onclick="switchTab('fysio')">Fysio</button>
         <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">Chat</button>
       </div>
 
@@ -1005,6 +1082,236 @@ h3 { font-size: 16px; font-weight: 600; }
         </div>
       </div>
 
+      <!-- VOEDING TAB -->
+      <div id="tab-voeding" class="tab-content">
+        <div class="voeding-scroll">
+
+          <div class="voeding-macros">
+            <div class="macro-card">
+              <div class="macro-label">Eiwit</div>
+              <div><span class="macro-val" id="v-eiwit">—</span><span class="macro-unit">g</span></div>
+              <div class="macro-target" id="v-eiwit-target">doel —g</div>
+              <div class="macro-bar"><div class="macro-bar-fill" id="v-eiwit-bar" style="width:0%;background:var(--accent)"></div></div>
+            </div>
+            <div class="macro-card">
+              <div class="macro-label">Calorieën</div>
+              <div><span class="macro-val" id="v-kcal">—</span><span class="macro-unit"> kcal</span></div>
+              <div class="macro-target" id="v-kcal-target">doel —</div>
+              <div class="macro-bar"><div class="macro-bar-fill" id="v-kcal-bar" style="width:0%;background:var(--warning)"></div></div>
+            </div>
+          </div>
+
+          <div class="meal-tabs">
+            <button class="meal-tab active" id="meal-tab-ochtend" onclick="switchMeal('ochtend')">🌅 Ochtend</button>
+            <button class="meal-tab" id="meal-tab-middag" onclick="switchMeal('middag')">☀️ Middag</button>
+            <button class="meal-tab" id="meal-tab-avond" onclick="switchMeal('avond')">🌙 Avond</button>
+          </div>
+          <div class="meal-log active" id="meal-log-ochtend"><div class="meal-log-empty">Nog niets gelogd</div></div>
+          <div class="meal-log" id="meal-log-middag"><div class="meal-log-empty">Nog niets gelogd</div></div>
+          <div class="meal-log" id="meal-log-avond"><div class="meal-log-empty">Nog niets gelogd</div></div>
+
+          <div class="food-add-card">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Product toevoegen</div>
+            <input type="text" id="food-naam" class="food-input" placeholder="Bijv. havermout, kwark, banaan…">
+            <div class="food-input-row">
+              <div>
+                <div class="food-input-label">Kcal</div>
+                <input type="number" id="food-kcal" class="food-input" placeholder="0" min="0">
+              </div>
+              <div>
+                <div class="food-input-label">Eiwit (g)</div>
+                <input type="number" id="food-eiwit" class="food-input" placeholder="0" min="0">
+              </div>
+            </div>
+            <button onclick="addFoodEntry()" style="width:100%;background:var(--accent);border:none;color:#fff;font-size:13px;font-weight:600;padding:9px;border-radius:8px;cursor:pointer">Toevoegen</button>
+          </div>
+
+          <!-- Loopvoeding calculator -->
+          <div class="lvd-card">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Loopvoeding berekenen</div>
+            <div class="lvd-inputs">
+              <div style="flex:1">
+                <div class="food-input-label">Afstand</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input type="number" id="lvd-km" class="food-input" placeholder="21" min="1" max="200" style="margin:0">
+                  <span style="font-size:12px;color:var(--muted);flex-shrink:0">km</span>
+                </div>
+              </div>
+              <div style="flex:2">
+                <div class="food-input-label">Type</div>
+                <select id="lvd-type" class="food-input" style="margin:0">
+                  <option value="easy">Easy / duurloop</option>
+                  <option value="tempo">Tempo / drempel</option>
+                  <option value="lang" selected>Lange duurloop</option>
+                  <option value="race">Wedstrijd</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="loopVoedingCalc()" style="width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-size:13px;font-weight:600;padding:9px;border-radius:8px;cursor:pointer;margin-bottom:8px">Bereken</button>
+            <div id="lvd-result" style="display:none;font-size:13px;line-height:1.7;color:var(--text2)"></div>
+          </div>
+
+          <button class="btn btn-secondary btn-full" onclick="quickSend('Beoordeel mijn voeding van vandaag. Kijk naar eiwitinname, calorieën en timing rondom training. Geef concrete aanbevelingen.');switchTab('chat')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Chat met voedingscoach
+          </button>
+        </div>
+      </div>
+
+      <!-- KRACHT TAB -->
+      <div id="tab-kracht" class="tab-content">
+        <div class="kracht-scroll">
+
+          <div class="kracht-rec-card" id="kracht-rec-card">
+            <div class="kracht-rec-eyebrow">Aanbeveling vandaag</div>
+            <div class="kracht-rec-title" id="kracht-rec-title">Laden…</div>
+            <div class="kracht-rec-meta" id="kracht-rec-meta"></div>
+            <button id="kracht-coach-btn" onclick="quickSend('Geef me advies voor mijn krachtsessie vandaag op basis van mijn trainingsbelasting en herstel.');switchTab('chat')" style="background:none;border:1px solid rgba(52,211,153,.4);color:#34D399;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)">Coach advies</button>
+          </div>
+
+          <div class="routine-section-label">Routines starten</div>
+          <div class="routine-grid">
+            <button class="routine-card" onclick="logKrachtSessie('activatie','Pre-training activatie')">
+              <span class="routine-card-icon">⚡</span>
+              <span class="routine-card-name">Pre-training activatie</span>
+              <span class="routine-card-meta">~10 min · Voor loop/interval</span>
+            </button>
+            <button class="routine-card" onclick="logKrachtSessie('tflibs','TFL/ITB preventie')">
+              <span class="routine-card-icon">🦵</span>
+              <span class="routine-card-name">TFL/ITB preventie</span>
+              <span class="routine-card-meta">~12 min · Dagelijks</span>
+            </button>
+            <button class="routine-card" onclick="logKrachtSessie('gym','Gym sessie')">
+              <span class="routine-card-icon">🏋</span>
+              <span class="routine-card-name">Gym sessie</span>
+              <span class="routine-card-meta">~40 min · 2× per week</span>
+            </button>
+            <button class="routine-card" onclick="logKrachtSessie('mobiliteit','Mobiliteit')">
+              <span class="routine-card-icon">🌈</span>
+              <span class="routine-card-name">Mobiliteit</span>
+              <span class="routine-card-meta">~20 min · Hersteldag</span>
+            </button>
+            <button class="routine-card" onclick="logKrachtSessie('postrun','Post-run stretch')">
+              <span class="routine-card-icon">🧘</span>
+              <span class="routine-card-name">Post-run stretch</span>
+              <span class="routine-card-meta">~15 min · Na elke loop</span>
+            </button>
+            <button class="routine-card" onclick="logKrachtSessie('core','Core &amp; stabiliteit')">
+              <span class="routine-card-icon">🔥</span>
+              <span class="routine-card-name">Core &amp; stabiliteit</span>
+              <span class="routine-card-meta">~15 min · 3× per week</span>
+            </button>
+          </div>
+
+          <div class="routine-section-label">Recente sessies</div>
+          <div id="kracht-history"><div style="font-size:13px;color:var(--muted)">Nog geen sessies gelogd.</div></div>
+
+          <div style="margin-top:14px">
+            <button class="btn btn-secondary btn-full" onclick="quickSend('Geef me een krachtsessie die past bij mijn huidige trainingsbelasting. Focus op loopspecifieke kracht en blessurepreventie.');switchTab('chat')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Chat met kracht-coach
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FYSIO TAB -->
+      <div id="tab-fysio" class="tab-content">
+        <div class="fysio-scroll">
+
+          <!-- Active injury banner -->
+          <div id="fysio-active-banner" style="display:none" class="injury-banner">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--warning);margin-bottom:3px">Actieve blessure</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)" id="fysio-banner-label">—</div>
+                <div style="font-size:11px;color:var(--text2);margin-top:2px" id="fysio-banner-date">—</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="font-size:28px" id="fysio-banner-icon">🟠</div>
+                <button onclick="blessureHersteld()" style="background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:#34D399;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)">Hersteld ✓</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phase A: region picker -->
+          <div id="fysio-phase-A" class="fysio-phase active">
+            <div style="font-size:17px;font-weight:700;margin-bottom:4px">Nieuwe klacht</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Selecteer het aangedane gebied</div>
+            <div class="fysio-region-grid">
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Knie')">🦵 Knie</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Enkel')">🦶 Enkel</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Heup/TFL')">🍑 Heup/TFL</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Kuit/Achillees')">🦿 Kuit/Achillees</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Hamstring')">🎿 Hamstring</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Voet/Fascia')">👟 Voet/Fascia</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Rug/SI')">🫀 Rug/SI</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Schouder/Nek')">💆 Schouder</button>
+              <button class="fysio-region-btn" onclick="selectFysioRegio('Overig')">❓ Overig</button>
+            </div>
+          </div>
+
+          <!-- Phase B: context -->
+          <div id="fysio-phase-B" class="fysio-phase">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px" id="fysio-phase-b-title">Context</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Vertel iets meer over de klacht</div>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Pijntype</div>
+            <button class="v3chip" onclick="toggleFysioCtx('pijn','Scherp', this)">⚡ Scherp / stekend</button>
+            <button class="v3chip" onclick="toggleFysioCtx('pijn','Branderig', this)">🔥 Branderig</button>
+            <button class="v3chip" onclick="toggleFysioCtx('pijn','Zeurend', this)">😶 Zeurend / doffe pijn</button>
+            <button class="v3chip" onclick="toggleFysioCtx('pijn','Stijfheid', this)">🧊 Stijfheid</button>
+            <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 8px">Hoe lang?</div>
+            <button class="v3chip" onclick="toggleFysioCtx('duur','<1 week', this)">📅 Minder dan 1 week</button>
+            <button class="v3chip" onclick="toggleFysioCtx('duur','1–2 weken', this)">📅 1–2 weken</button>
+            <button class="v3chip" onclick="toggleFysioCtx('duur','>2 weken', this)">📅 Langer dan 2 weken</button>
+            <div style="margin-top:14px;display:flex;gap:8px">
+              <button onclick="fysioBack()" style="flex:1;background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:9px;font-size:13px;cursor:pointer;font-family:var(--font)">← Terug</button>
+              <button onclick="fysioToPhaseC()" id="fysio-b-next" style="flex:2;background:var(--accent);border:none;color:#fff;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">Rode vlaggen →</button>
+            </div>
+          </div>
+
+          <!-- Phase C: red flags -->
+          <div id="fysio-phase-C" class="fysio-phase">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px">Rode vlaggen</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Zijn er bijkomende klachten?</div>
+            <button class="v3chip" onclick="toggleFysioFlag('nachtpijn',this)">🌙 Nachtpijn die je wakker maakt</button>
+            <button class="v3chip" onclick="toggleFysioFlag('progressief',this)">📈 Pijn neemt progressief toe in rust</button>
+            <button class="v3chip" onclick="toggleFysioFlag('uitstralend',this)">⚡ Uitstralende pijn naar arm of been</button>
+            <button class="v3chip" onclick="toggleFysioFlag('krachtverlies',this)">💪 Krachtverlies of gevoelloosheid</button>
+            <button class="v3chip" onclick="toggleFysioFlag('koorts',this)">🌡️ Koorts, gewichtsverlies of malaise</button>
+            <div id="fysio-flag-alert" style="display:none;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:12px;font-size:13px;color:var(--danger);margin:10px 0">
+              ⚠️ Rode vlaggen aanwezig — raadpleeg een arts of fysiotherapeut.
+            </div>
+            <div style="margin-top:14px;display:flex;gap:8px">
+              <button onclick="fysioToPhaseB()" style="flex:1;background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:9px;font-size:13px;cursor:pointer;font-family:var(--font)">← Terug</button>
+              <button onclick="fysioAnalyse()" style="flex:2;background:var(--accent);border:none;color:#fff;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">Analyseer →</button>
+            </div>
+          </div>
+
+          <!-- Phase D: result -->
+          <div id="fysio-phase-D" class="fysio-phase">
+            <div id="fysio-result-content" style="font-size:13px;color:var(--text2);line-height:1.7"></div>
+            <div style="margin-top:14px;display:flex;gap:8px">
+              <button onclick="fysioReset()" style="flex:1;background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:9px;font-size:13px;cursor:pointer;font-family:var(--font)">← Nieuwe klacht</button>
+              <button onclick="quickSend('Ik heb een klacht: ' + _fysioState.regio + '. ' + _fysioState.pijn + ', ' + _fysioState.duur + '. Analyseer en geef advies.');switchTab('chat')" style="flex:2;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">Bespreken →</button>
+            </div>
+          </div>
+
+          <!-- Injury history -->
+          <div id="fysio-history-section" style="margin-top:20px">
+            <div class="routine-section-label">Blessurechistorie</div>
+            <div id="fysio-history-list"><div style="font-size:13px;color:var(--muted)">Geen blessures geregistreerd.</div></div>
+          </div>
+
+          <div style="margin-top:14px">
+            <button class="btn btn-secondary btn-full" onclick="quickSend('Ik heb een fysieke klacht. Help me dit analyseren en geef een herstelplan.');switchTab('chat')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Chat met fysio-coach
+            </button>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div><!-- /below-nav -->
 
@@ -1047,7 +1354,7 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let CONFIG = {};
 let intervalsCtx = null;
 let stravaAnalysis = null;
-let MEM = { macroplan: null, weekplannen: [], flags: [], zones: null };
+let MEM = { macroplan: null, weekplannen: [], flags: [], zones: null, voeding: null, kracht: null, blessures: null };
 let messages = [];
 let isLoading = false;
 let currentTab = 'home';
@@ -1129,19 +1436,25 @@ function setStatus(s) {
 ═══════════════════════════════════════════ */
 async function loadMem() {
   // Load from v2_ keys, fall back to v1 mem_ keys
-  const [macro, weeks, flags, zones, sa, chatH] = await Promise.all([
+  const [macro, weeks, flags, zones, sa, chatH, voeding, kracht, blessures] = await Promise.all([
     sbLoad('mem_macroplan'),
     sbLoad('mem_weekplannen'),
     sbLoad('mem_flags'),
     sbLoad('mem_zones'),
     sbLoad('strava_analysis'),
     sbLoad('chat_history'),
+    sbLoad('mem_voeding'),
+    sbLoad('mem_kracht'),
+    sbLoad('mem_blessures'),
   ]);
 
   MEM.macroplan = macro || null;
   MEM.weekplannen = weeks || [];
   MEM.flags = flags || [];
   MEM.zones = zones || null;
+  MEM.voeding = voeding || { log: {} };
+  MEM.kracht = kracht || { sessies: [] };
+  MEM.blessures = blessures || [];
   if (sa) stravaAnalysis = sa;
 
   if (chatH?.messages?.length) {
@@ -1171,6 +1484,9 @@ function switchTab(tab) {
   if (tab === 'home') renderHomeTab();
   if (tab === 'analyse') renderAnalyseTab();
   if (tab === 'status') renderStatusTab();
+  if (tab === 'voeding') renderVoedingTab();
+  if (tab === 'kracht') renderKrachtTab();
+  if (tab === 'fysio') renderFysioTab();
 }
 
 function goToPlanning(sectionId) {
@@ -2106,6 +2422,282 @@ function computeTempoInzicht(corrData, zones) {
 }
 
 /* ═══════════════════════════════════════════
+   VOEDING TAB
+═══════════════════════════════════════════ */
+let _voedingMaaltijd = 'ochtend';
+
+function switchMeal(m) {
+  _voedingMaaltijd = m;
+  ['ochtend','middag','avond'].forEach(s => {
+    document.getElementById('meal-tab-' + s).classList.toggle('active', s === m);
+    document.getElementById('meal-log-' + s).classList.toggle('active', s === m);
+  });
+}
+
+function renderVoedingTab() {
+  // Compute targets from ATL + bodyweight
+  const wellness = intervalsCtx?.wellness || [];
+  const latest = wellness[wellness.length - 1] || {};
+  const atl = latest.atl || 0;
+  const gewicht = CONFIG.gewicht || 65;
+  const eiwitDoel = Math.round(gewicht * 2);
+  const kcalDoel = atl > 40 ? 3200 : atl > 25 ? 2900 : 2600;
+
+  document.getElementById('v-eiwit-target').textContent = 'doel ' + eiwitDoel + 'g';
+  document.getElementById('v-kcal-target').textContent = 'doel ' + kcalDoel;
+
+  // Today's log
+  const today = new Date().toISOString().slice(0, 10);
+  const dagLog = MEM.voeding?.log?.[today] || { ochtend: [], middag: [], avond: [] };
+
+  let totEiwit = 0, totKcal = 0;
+  ['ochtend','middag','avond'].forEach(m => {
+    const items = dagLog[m] || [];
+    const el = document.getElementById('meal-log-' + m);
+    if (!items.length) { el.innerHTML = '<div class="meal-log-empty">Nog niets gelogd</div>'; return; }
+    el.innerHTML = items.map((item, i) =>
+      '<div class="meal-entry">'
+      + '<span style="color:var(--text)">' + escapeHtml(item.naam) + '</span>'
+      + '<span style="display:flex;align-items:center;gap:12px">'
+      + (item.kcal ? '<span style="font-size:12px;color:var(--text2)">' + item.kcal + ' kcal</span>' : '')
+      + (item.eiwit ? '<span style="font-size:12px;color:var(--accent)">' + item.eiwit + 'g eiwit</span>' : '')
+      + '<button class="meal-entry-del" onclick="removeFoodEntry(\'' + m + '\',' + i + ')">×</button>'
+      + '</span></div>'
+    ).join('');
+    items.forEach(it => { totEiwit += it.eiwit || 0; totKcal += it.kcal || 0; });
+  });
+
+  document.getElementById('v-eiwit').textContent = totEiwit || '—';
+  document.getElementById('v-kcal').textContent = totKcal || '—';
+  document.getElementById('v-eiwit-bar').style.width = Math.min(100, Math.round((totEiwit / eiwitDoel) * 100)) + '%';
+  document.getElementById('v-kcal-bar').style.width = Math.min(100, Math.round((totKcal / kcalDoel) * 100)) + '%';
+}
+
+function addFoodEntry() {
+  const naam = document.getElementById('food-naam').value.trim();
+  if (!naam) return;
+  const kcal = parseInt(document.getElementById('food-kcal').value) || 0;
+  const eiwit = parseInt(document.getElementById('food-eiwit').value) || 0;
+  const today = new Date().toISOString().slice(0, 10);
+  if (!MEM.voeding) MEM.voeding = { log: {} };
+  if (!MEM.voeding.log[today]) MEM.voeding.log[today] = { ochtend: [], middag: [], avond: [] };
+  MEM.voeding.log[today][_voedingMaaltijd].push({ naam, kcal, eiwit });
+  sbSave('mem_voeding', MEM.voeding);
+  document.getElementById('food-naam').value = '';
+  document.getElementById('food-kcal').value = '';
+  document.getElementById('food-eiwit').value = '';
+  renderVoedingTab();
+}
+
+function removeFoodEntry(maaltijd, idx) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!MEM.voeding?.log?.[today]?.[maaltijd]) return;
+  MEM.voeding.log[today][maaltijd].splice(idx, 1);
+  sbSave('mem_voeding', MEM.voeding);
+  renderVoedingTab();
+}
+
+function loopVoedingCalc() {
+  const km = parseFloat(document.getElementById('lvd-km').value) || 0;
+  const type = document.getElementById('lvd-type').value;
+  if (!km) { alert('Vul een afstand in'); return; }
+  const minsPerKm = type === 'easy' ? 6.5 : type === 'tempo' ? 5.0 : type === 'race' ? 5.25 : 6.0;
+  const duurMin = Math.round(km * minsPerKm);
+  const carbPerUur = type === 'easy' ? 30 : type === 'tempo' ? 50 : type === 'race' ? 60 : 45;
+  const totalCarb = Math.round((duurMin / 60) * carbPerUur);
+  const gels = duurMin < 60 ? 0 : Math.ceil((duurMin - 30) / 30);
+  const water = Math.round(duurMin * 0.4 * 10) / 10;
+  const el = document.getElementById('lvd-result');
+  el.style.display = 'block';
+  el.innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">'
+    + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--accent)">' + totalCarb + 'g</div><div style="font-size:10px;color:var(--text2);margin-top:2px">koolhydraten</div></div>'
+    + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--warning)">' + gels + '</div><div style="font-size:10px;color:var(--text2);margin-top:2px">gels (~25g)</div></div>'
+    + '<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--cyan)">' + water + 'L</div><div style="font-size:10px;color:var(--text2);margin-top:2px">water</div></div>'
+    + '</div>'
+    + '<div style="font-size:12px;color:var(--muted)">Geschat op ' + duurMin + ' min · ' + carbPerUur + 'g koolhydraten/uur</div>';
+}
+
+/* ═══════════════════════════════════════════
+   KRACHT TAB
+═══════════════════════════════════════════ */
+function renderKrachtTab() {
+  // Smart recommendation
+  const wellness = intervalsCtx?.wellness || [];
+  const latest = wellness[wellness.length - 1] || {};
+  const tsb = latest.ctl != null && latest.atl != null ? latest.ctl - latest.atl : null;
+  const atl = latest.atl || 0;
+
+  let rec = { naam: 'Mobiliteit', meta: '~20 min · Hersteldag', reden: 'Standaard aanbeveling.' };
+  if (tsb !== null) {
+    if (tsb < -8) rec = { naam: 'Post-run stretch', meta: '~15 min · Herstel prioriteit', reden: 'TSB laag (' + Math.round(tsb) + '). Focus op herstel.' };
+    else if (tsb > 10) rec = { naam: 'Gym sessie', meta: '~40 min · TSB hoog', reden: 'Goed hersteld (TSB +' + Math.round(tsb) + '). Tijd voor een krachtsessie.' };
+    else if (atl > 50) rec = { naam: 'Core & stabiliteit', meta: '~15 min · Belasting hoog', reden: 'Hoge trainingsbelasting. Core werk is veilig.' };
+    else rec = { naam: 'TFL/ITB preventie', meta: '~12 min · Blessurepreventie', reden: 'Regulier onderhoud.' };
+  }
+
+  document.getElementById('kracht-rec-title').textContent = rec.naam;
+  document.getElementById('kracht-rec-meta').textContent = rec.meta + (rec.reden ? ' — ' + rec.reden : '');
+
+  // Session history
+  const sessies = (MEM.kracht?.sessies || []).slice().reverse().slice(0, 10);
+  const histEl = document.getElementById('kracht-history');
+  if (!sessies.length) {
+    histEl.innerHTML = '<div style="font-size:13px;color:var(--muted)">Nog geen sessies gelogd.</div>';
+    return;
+  }
+  histEl.innerHTML = sessies.map(s =>
+    '<div class="kracht-history-item">'
+    + '<div><div style="font-size:13px;color:var(--text)">' + escapeHtml(s.naam) + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + escapeHtml(s.datum) + '</div></div>'
+    + '<div style="font-size:12px;color:var(--text2)">✓</div>'
+    + '</div>'
+  ).join('');
+}
+
+async function logKrachtSessie(key, naam) {
+  const datum = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+  if (!MEM.kracht) MEM.kracht = { sessies: [] };
+  MEM.kracht.sessies.push({ key, naam, datum });
+  if (MEM.kracht.sessies.length > 50) MEM.kracht.sessies = MEM.kracht.sessies.slice(-50);
+  await sbSave('mem_kracht', MEM.kracht);
+  // Visual feedback
+  document.querySelectorAll('.routine-card').forEach(el => {
+    if (el.getAttribute('onclick')?.includes(key)) {
+      el.classList.add('started');
+      setTimeout(() => el.classList.remove('started'), 2000);
+    }
+  });
+  renderKrachtTab();
+}
+
+/* ═══════════════════════════════════════════
+   FYSIO TAB
+═══════════════════════════════════════════ */
+let _fysioState = { regio: null, pijn: null, duur: null, flags: [] };
+
+function selectFysioRegio(regio) {
+  _fysioState = { regio, pijn: null, duur: null, flags: [] };
+  document.getElementById('fysio-phase-b-title').textContent = regio + ' — Context';
+  document.querySelectorAll('.v3chip').forEach(el => el.classList.remove('selected'));
+  fysioToPhaseB();
+}
+
+function toggleFysioCtx(type, val, el) {
+  if (type === 'pijn') _fysioState.pijn = _fysioState.pijn === val ? null : val;
+  if (type === 'duur') _fysioState.duur = _fysioState.duur === val ? null : val;
+  // Update chip visuals within phase B only
+  el.closest('.fysio-phase').querySelectorAll('.v3chip').forEach(c => {
+    if (c.textContent.trim() === el.textContent.trim()) c.classList.toggle('selected', c === el);
+  });
+}
+
+function toggleFysioFlag(flag, el) {
+  const idx = _fysioState.flags.indexOf(flag);
+  if (idx >= 0) _fysioState.flags.splice(idx, 1);
+  else _fysioState.flags.push(flag);
+  el.classList.toggle('selected');
+  document.getElementById('fysio-flag-alert').style.display = _fysioState.flags.length ? 'block' : 'none';
+}
+
+function fysioSetPhase(phase) {
+  ['A','B','C','D'].forEach(p => {
+    document.getElementById('fysio-phase-' + p)?.classList.toggle('active', p === phase);
+  });
+}
+function fysioBack() { fysioSetPhase('A'); }
+function fysioToPhaseB() { fysioSetPhase('B'); }
+function fysioToPhaseC() { fysioSetPhase('C'); }
+
+async function fysioAnalyse() {
+  fysioSetPhase('D');
+  const el = document.getElementById('fysio-result-content');
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text2)">Analyseren…</div>';
+
+  const prompt = `AI Fysio-analyse:
+Regio: ${_fysioState.regio}
+Pijntype: ${_fysioState.pijn || 'niet opgegeven'}
+Duur: ${_fysioState.duur || 'niet opgegeven'}
+Rode vlaggen: ${_fysioState.flags.length ? _fysioState.flags.join(', ') : 'geen'}
+
+Geef een korte analyse van de meest waarschijnlijke diagnose voor een duursporter, een hersteladvies, en een trainingsadvies (wat kan nog wel, wat niet). Max 150 woorden.`;
+
+  try {
+    const model = document.getElementById('model-select').value || 'claude-haiku-4-5';
+    const res = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, max_tokens: 600, system: 'Je bent een AI sportfysio. Antwoord in het Nederlands. Wees bondig en praktisch.', messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const tekst = data.content?.[0]?.text || 'Geen analyse beschikbaar.';
+    el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px;line-height:1.7">'
+      + tekst.split('\n').map(l => l ? '<p style="margin-bottom:6px">' + escapeHtml(l) + '</p>' : '').join('')
+      + '</div>';
+
+    // Save to blessures
+    const blessure = {
+      id: Date.now(),
+      datum: new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }),
+      regio: _fysioState.regio,
+      pijn: _fysioState.pijn,
+      duur: _fysioState.duur,
+      flags: _fysioState.flags,
+      status: 'actief'
+    };
+    if (!MEM.blessures) MEM.blessures = [];
+    MEM.blessures.unshift(blessure);
+    await sbSave('mem_blessures', MEM.blessures);
+    renderFysioTab();
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--danger)">Analyse mislukt. Probeer opnieuw.</div>';
+  }
+}
+
+function fysioReset() {
+  _fysioState = { regio: null, pijn: null, duur: null, flags: [] };
+  document.querySelectorAll('.v3chip').forEach(el => el.classList.remove('selected'));
+  document.getElementById('fysio-flag-alert').style.display = 'none';
+  fysioSetPhase('A');
+}
+
+async function blessureHersteld() {
+  if (!MEM.blessures?.length) return;
+  const actief = MEM.blessures.find(b => b.status === 'actief');
+  if (actief) actief.status = 'hersteld';
+  await sbSave('mem_blessures', MEM.blessures);
+  renderFysioTab();
+}
+
+function renderFysioTab() {
+  // Active injury banner
+  const actief = (MEM.blessures || []).find(b => b.status === 'actief');
+  const banner = document.getElementById('fysio-active-banner');
+  if (actief) {
+    banner.style.display = 'block';
+    document.getElementById('fysio-banner-label').textContent = actief.regio + (actief.pijn ? ' — ' + actief.pijn : '');
+    document.getElementById('fysio-banner-date').textContent = actief.datum;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // History
+  const histEl = document.getElementById('fysio-history-list');
+  const blessures = (MEM.blessures || []).slice(0, 10);
+  if (!blessures.length) {
+    histEl.innerHTML = '<div style="font-size:13px;color:var(--muted)">Geen blessures geregistreerd.</div>';
+    return;
+  }
+  histEl.innerHTML = blessures.map(b =>
+    '<div class="injury-history-item">'
+    + '<div style="font-size:20px">' + (b.status === 'actief' ? '🟠' : '✅') + '</div>'
+    + '<div><div style="font-size:13px;color:var(--text);font-weight:500">' + escapeHtml(b.regio) + (b.pijn ? ' — ' + escapeHtml(b.pijn) : '') + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + escapeHtml(b.datum) + ' · ' + (b.status === 'actief' ? 'Actief' : 'Hersteld') + '</div></div>'
+    + '</div>'
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════
    SYSTEM PROMPT
 ═══════════════════════════════════════════ */
 function buildSystemPrompt() {
@@ -2137,6 +2729,10 @@ ${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende b
     memParts.push('AANDACHTSPUNTEN (bereken hoe lang geleden o.b.v. "datum" vs. huidige datum — vertrouw nooit op relatieve tijdsaanduidingen in "omschrijving"):\n' + JSON.stringify(MEM.flags.filter(f=>!f.opgelost)));
   }
   if (MEM.zones) memParts.push('HARTSLAGZONES (empirisch):\n' + JSON.stringify(MEM.zones));
+  const activeBlessures = (MEM.blessures || []).filter(b => b.status === 'actief');
+  if (activeBlessures.length) memParts.push('ACTIEVE BLESSURES:\n' + JSON.stringify(activeBlessures));
+  const recentKracht = (MEM.kracht?.sessies || []).slice(-5);
+  if (recentKracht.length) memParts.push('RECENTE KRACHTSESSIES:\n' + JSON.stringify(recentKracht));
   const memCtx = memParts.join('\n\n');
 
   // Strava analysis

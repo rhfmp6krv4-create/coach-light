@@ -812,16 +812,29 @@ h3 { font-size: 16px; font-weight: 600; }
 .injury-history-item { display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border) }
 .injury-history-item:last-child { border-bottom:none }
 
+/* ─── MATERIAAL ─── */
+.materiaal-scroll { overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px }
+.schoen-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden }
+.schoen-card-header { display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px }
+.schoen-naam { font-size:15px;font-weight:600;color:var(--text);line-height:1.3 }
+.schoen-km { font-size:20px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums }
+.schoen-km-label { font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:1px }
+.schoen-bar-wrap { margin-top:8px }
+.schoen-bar-track { background:rgba(100,140,255,.1);border-radius:4px;height:5px;overflow:hidden;margin-top:4px }
+.schoen-bar-fill { height:100%;border-radius:4px;transition:width .8s cubic-bezier(.16,1,.3,1) }
+.schoen-warn { display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:2px 6px;margin-top:6px }
+
 /* ─── DESKTOP OVERRIDES ─── */
 @media (min-width: 768px) {
   #top-nav { padding: 0 24px; }
   #sidebar { display: flex; }
-  .tab-bar-desktop { display: flex; }
+  .tab-bar-desktop { display: none; } /* sidebar handles nav on desktop */
   #bottom-nav { display: none; }
   #tab-planning { padding: 24px; }
   #tab-voeding { padding: 0; }
   #tab-kracht { padding: 0; }
   #tab-fysio { padding: 0; }
+  #tab-materiaal { padding: 0; }
 }
 
 /* No-config overlay */
@@ -916,6 +929,10 @@ h3 { font-size: 16px; font-weight: 600; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           Fysio
         </button>
+        <button class="sidebar-tab" data-tab="materiaal" onclick="switchTab('materiaal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+          Materiaal
+        </button>
         <button class="sidebar-tab" data-tab="chat" onclick="switchTab('chat')" style="margin-top:auto">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Chat
@@ -935,6 +952,7 @@ h3 { font-size: 16px; font-weight: 600; }
         <button class="tab-btn" data-tab="voeding" onclick="switchTab('voeding')">Voeding</button>
         <button class="tab-btn" data-tab="kracht" onclick="switchTab('kracht')">Kracht</button>
         <button class="tab-btn" data-tab="fysio" onclick="switchTab('fysio')">Fysio</button>
+        <button class="tab-btn" data-tab="materiaal" onclick="switchTab('materiaal')">Materiaal</button>
         <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">Chat</button>
       </div>
 
@@ -1312,6 +1330,21 @@ h3 { font-size: 16px; font-weight: 600; }
         </div>
       </div>
 
+      <!-- MATERIAAL TAB -->
+      <div id="tab-materiaal" class="tab-content">
+        <div class="materiaal-scroll">
+          <div id="materiaal-content">
+            <div style="padding:40px 0;text-align:center;color:var(--text2);font-size:13px">Schoendata laden…</div>
+          </div>
+          <div style="margin-top:14px">
+            <button class="btn btn-secondary btn-full" onclick="quickSend('Analyseer mijn schoengebruik. Welke schoenen gebruik ik voor welk type training? Zijn er schoenen die bijna aan vervanging toe zijn? Geef concreet advies over het optimaliseren van mijn schoenenrotatie voor de marathon.');switchTab('chat')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Bespreek schoenenrotatie met de coach
+            </button>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div><!-- /below-nav -->
 
@@ -1487,6 +1520,7 @@ function switchTab(tab) {
   if (tab === 'voeding') renderVoedingTab();
   if (tab === 'kracht') renderKrachtTab();
   if (tab === 'fysio') renderFysioTab();
+  if (tab === 'materiaal') renderMateriaalTab();
 }
 
 function goToPlanning(sectionId) {
@@ -2698,6 +2732,119 @@ function renderFysioTab() {
 }
 
 /* ═══════════════════════════════════════════
+   MATERIAAL TAB
+═══════════════════════════════════════════ */
+let _gearData = null;
+
+async function fetchGear() {
+  if (!CONFIG.intervalsId || !CONFIG.intervalsKey) return null;
+  try {
+    const auth = btoa('API_KEY:' + CONFIG.intervalsKey);
+    const r = await fetch(
+      `https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/gear`,
+      { headers: { 'Authorization': 'Basic ' + auth } }
+    );
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function renderMateriaalTab() {
+  const el = document.getElementById('materiaal-content');
+  el.innerHTML = '<div style="padding:24px 0;text-align:center;color:var(--text2);font-size:13px">Schoendata laden…</div>';
+
+  if (!_gearData) _gearData = await fetchGear();
+
+  if (!_gearData || !_gearData.length) {
+    // Fallback: aggregate gear from activities
+    const acts = intervalsCtx?.activities || [];
+    const gearMap = {};
+    acts.forEach(a => {
+      const id = a.gear_id || a.gearId;
+      const naam = a.gear || a.gear_name || a.gearName;
+      if (!naam) return;
+      const dist = (a.distance || 0) / 1000; // to km
+      if (!gearMap[id || naam]) gearMap[id || naam] = { naam, km: 0, acts: 0 };
+      gearMap[id || naam].km += dist;
+      gearMap[id || naam].acts += 1;
+    });
+    const items = Object.values(gearMap).filter(g => g.km > 0).sort((a,b) => b.km - a.km);
+    if (!items.length) {
+      el.innerHTML = '<div style="padding:24px 0;text-align:center;color:var(--text2);font-size:13px">Geen schoendata gevonden in Intervals.icu.<br><span style="font-size:12px;color:var(--muted)">Koppel schoenen aan je activiteiten in Strava of Intervals.icu.</span></div>';
+      return;
+    }
+    _gearData = items.map(g => ({ name: g.naam, distance: Math.round(g.km * 1000), retired: false, source: 'activities' }));
+  }
+
+  const shoes = _gearData
+    .filter(g => !g.retired)
+    .sort((a,b) => (b.distance || 0) - (a.distance || 0));
+  const retired = _gearData.filter(g => g.retired);
+
+  let html = '';
+
+  if (!shoes.length && !retired.length) {
+    el.innerHTML = '<div style="padding:24px 0;text-align:center;color:var(--text2);font-size:13px">Geen schoendata gevonden.<br><span style="font-size:12px;color:var(--muted)">Koppel schoenen aan je activiteiten in Strava of Intervals.icu.</span></div>';
+    return;
+  }
+
+  // Active shoes
+  if (shoes.length) {
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:10px">Actieve schoenen</div>';
+    shoes.forEach(g => {
+      const km = Math.round((g.distance || 0) / 1000);
+      // Carbon racers ~300-500km, training shoes ~600-800km. Default warning at 500km, max 700km
+      const isCarbon = /vaporfly|alphafly|adizero|metaspeed|deviate|superblast/i.test(g.name || '');
+      const maxKm = isCarbon ? 400 : 700;
+      const warnKm = isCarbon ? 320 : 550;
+      const pct = Math.min(100, Math.round((km / maxKm) * 100));
+      const barColor = pct >= 90 ? 'var(--danger)' : pct >= 75 ? 'var(--warning)' : 'var(--success)';
+
+      html += '<div class="schoen-card">';
+      html += '<div class="schoen-card-header">';
+      html += '<div class="schoen-naam">' + escapeHtml(g.name || 'Onbekende schoen') + (isCarbon ? ' <span style="font-size:10px;color:var(--accent);font-weight:700">⚡ Carbon</span>' : '') + '</div>';
+      html += '<div style="text-align:right"><div class="schoen-km">' + km + '</div><div class="schoen-km-label">km</div></div>';
+      html += '</div>';
+      html += '<div class="schoen-bar-wrap">';
+      html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px"><span>' + pct + '% van ' + maxKm + 'km</span><span>' + (maxKm - km) + ' km over</span></div>';
+      html += '<div class="schoen-bar-track"><div class="schoen-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>';
+      html += '</div>';
+      if (km >= maxKm) {
+        html += '<div class="schoen-warn" style="background:rgba(248,113,113,.12);color:var(--danger)">⚠️ Aan vervanging toe</div>';
+      } else if (km >= warnKm) {
+        html += '<div class="schoen-warn" style="background:rgba(251,191,36,.1);color:var(--warning)">⏳ Bijna aan vervanging toe</div>';
+      }
+      if (g.brand_name || g.model_name) {
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:6px">' + escapeHtml([g.brand_name, g.model_name].filter(Boolean).join(' · ')) + '</div>';
+      }
+      html += '</div>';
+    });
+  }
+
+  // Retired shoes (collapsed)
+  if (retired.length) {
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px">Gepensioneerde schoenen</div>';
+    retired.forEach(g => {
+      const km = Math.round((g.distance || 0) / 1000);
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;opacity:.5">';
+      html += '<span style="font-size:13px;color:var(--text2)">' + escapeHtml(g.name || '—') + '</span>';
+      html += '<span style="font-size:13px;color:var(--muted)">' + km + ' km</span>';
+      html += '</div>';
+    });
+  }
+
+  el.innerHTML = html;
+
+  // Feed gear into system prompt context
+  _gearForPrompt = shoes.map(g => ({
+    naam: g.name, km: Math.round((g.distance||0)/1000),
+    carbon: /vaporfly|alphafly|adizero|metaspeed|deviate|superblast/i.test(g.name||'')
+  }));
+}
+
+let _gearForPrompt = [];
+
+/* ═══════════════════════════════════════════
    SYSTEM PROMPT
 ═══════════════════════════════════════════ */
 function buildSystemPrompt() {
@@ -2733,6 +2880,7 @@ ${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende b
   if (activeBlessures.length) memParts.push('ACTIEVE BLESSURES:\n' + JSON.stringify(activeBlessures));
   const recentKracht = (MEM.kracht?.sessies || []).slice(-5);
   if (recentKracht.length) memParts.push('RECENTE KRACHTSESSIES:\n' + JSON.stringify(recentKracht));
+  if (_gearForPrompt.length) memParts.push('SCHOENDATA:\n' + JSON.stringify(_gearForPrompt));
   const memCtx = memParts.join('\n\n');
 
   // Strava analysis
@@ -2845,6 +2993,9 @@ async function init() {
     loadMem(),
     fetchIntervalsData(),
   ]);
+
+  // Pre-fetch gear in background (non-blocking)
+  fetchGear().then(g => { if (g) _gearData = g; });
 
   // Render all tabs with loaded data
   renderHomeTab();

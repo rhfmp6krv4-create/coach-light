@@ -1208,14 +1208,14 @@ function updateSidebarStats() {
     el.className = 'stat-val ' + (v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
   }
 
-  // Journey progress bar (sidebar)
+  // Journey progress bar (sidebar) — 20 weeks training window
   const raceDate = new Date('2026-10-18');
   const now = new Date();
   const diff = raceDate - now;
   if (diff > 0) {
-    const totalDays = 365;
-    const elapsed = totalDays - Math.floor(diff / 86400000);
-    const pct = Math.max(0, Math.min(100, (elapsed / totalDays) * 100));
+    const totalDays = 140; // 20 weeks
+    const daysLeft = Math.floor(diff / 86400000);
+    const pct = Math.max(0, Math.min(100, ((totalDays - daysLeft) / totalDays) * 100));
     document.getElementById('journey-fill').style.width = pct + '%';
   }
 
@@ -1452,9 +1452,9 @@ function renderHomeTab() {
   if (cdEl) cdEl.textContent = diff > 0 ? Math.floor(diff / 86400000) : '—';
   const jfEl = document.getElementById('home-journey-fill');
   if (jfEl && diff > 0) {
-    const totalDays = 365;
-    const elapsed = totalDays - Math.floor(diff / 86400000);
-    jfEl.style.width = Math.max(0, Math.min(100, (elapsed / totalDays) * 100)) + '%';
+    const totalDays = 140; // 20 weeks
+    const daysLeft = Math.floor(diff / 86400000);
+    jfEl.style.width = Math.max(0, Math.min(100, ((totalDays - daysLeft) / totalDays) * 100)) + '%';
   }
 
   // Stats

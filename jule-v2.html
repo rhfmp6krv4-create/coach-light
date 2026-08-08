@@ -1509,6 +1509,22 @@ function renderHomeTab() {
 /* ═══════════════════════════════════════════
    PLANNING TAB RENDERER
 ═══════════════════════════════════════════ */
+function nlDatumToIso(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const mnd = {jan:1,feb:2,mrt:3,apr:4,mei:5,jun:6,jul:7,aug:8,sep:9,okt:10,nov:11,dec:12,
+    maart:3,april:4,juni:6,juli:7,augustus:8,september:9,oktober:10,november:11,december:12,
+    januari:1,februari:2};
+  const m = s.match(/(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?/i);
+  if (!m) return null;
+  const day = parseInt(m[1]);
+  const mon = mnd[m[2].toLowerCase()];
+  if (!mon) return null;
+  const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
+  return year + '-' + String(mon).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+}
+
 function renderMacroplan(macro) {
   if (!macro) return null;
   const today = new Date().toISOString().slice(0, 10);
@@ -1528,12 +1544,14 @@ function renderMacroplan(macro) {
   }
 
   fases.forEach((fase, i) => {
-    const start = fase.startdatum || fase.start || fase.van || null;
-    const eind  = fase.einddatum  || fase.eind  || fase.tot || null;
+    const startRaw = fase.startdatum || fase.start_datum || fase.start || fase.van || null;
+    const eindRaw  = fase.einddatum  || fase.eind_datum  || fase.eind  || fase.tot || null;
+    const start = nlDatumToIso(startRaw);
+    const eind  = nlDatumToIso(eindRaw);
     const isActief  = start && eind ? today >= start && today <= eind : false;
     const isGeweest = eind ? today > eind : false;
     const naam = fase.naam || fase.name || (fase.block ? 'Blok ' + fase.block : null) || 'Fase ' + (i + 1);
-    const periode = fase.periode || fase.weken || (start && eind ? start + ' – ' + eind : '');
+    const periode = fase.periode || fase.weken || (startRaw && eindRaw ? startRaw + ' – ' + eindRaw : '');
     const weekKm = fase.weekvolume_km || fase.weekly_km || fase.km_week || null;
     const doelCTL = fase.doelCTL || fase.doel_ctl || null;
     const focusTxt = fase.focus || fase.structuur || fase.intensiteit || null;
@@ -1574,75 +1592,110 @@ function renderMacroplan(macro) {
 function renderWeekplan(week) {
   if (!week) return null;
   const today = new Date().toISOString().slice(0, 10);
-  let html = '';
-
-  if (week.week || week.startdatum || week.totaalKm) {
-    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">';
-    html += '<div>';
-    if (week.week) html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(week.week) + '</div>';
-    if (week.startdatum) html += '<div style="font-size:12px;color:var(--text2)">Vanaf ' + escapeHtml(week.startdatum) + '</div>';
-    html += '</div>';
-    if (week.totaalKm) html += '<span style="font-size:12px;color:var(--accent);font-weight:600">' + escapeHtml(String(week.totaalKm)) + ' km</span>';
-    html += '</div>';
-  }
-
   const dagVolgorde = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
   const dagKort = { maandag:'Ma', dinsdag:'Di', woensdag:'Wo', donderdag:'Do', vrijdag:'Vr', zaterdag:'Za', zondag:'Zo' };
   const zoneColor = { 'Z1':'#34d399','Z2':'#60a5fa','Z3':'#f59e0b','Z4':'#f87171','Z5':'#a78bfa' };
-  const weekStart = week.startdatum || week.start_datum || null;
 
-  const dagData = week.dagen || week.days || {};
-  const sleutels = Object.keys(dagData);
-  if (!sleutels.length) {
-    return html + '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word">' + escapeHtml(JSON.stringify(week, null, 2)) + '</pre>';
+  // Unwrap { plan: { ... } } wrapper if present
+  const plan = week.plan || week;
+
+  let html = '';
+
+  // Header: week label + focus/blok
+  const weekLabel = plan.week || plan.weeknummer || plan.periode || week.week || '';
+  const blokLabel = plan.blok || plan.block || '';
+  const focusLabel = plan.focus || plan.theme || '';
+  if (weekLabel || blokLabel) {
+    html += '<div style="margin-bottom:12px">';
+    if (weekLabel) html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(weekLabel) + '</div>';
+    if (blokLabel) html += '<div style="font-size:12px;color:var(--accent);margin-top:2px">' + escapeHtml(blokLabel) + '</div>';
+    if (focusLabel) html += '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + escapeHtml(focusLabel) + '</div>';
+    html += '</div>';
   }
 
-  sleutels.sort((a, b) => {
-    const ia = dagVolgorde.indexOf(a.toLowerCase());
-    const ib = dagVolgorde.indexOf(b.toLowerCase());
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  // Collect day entries: handles { maandag: {...} }, { dagen: { maandag: {...} } },
+  // and coach compound keys like { zondag_19_juli: {...} }
+  let dagEntries = []; // [{dagNaam, iso, data}]
+
+  const dagData = plan.dagen || plan.days || plan;
+  for (const key of Object.keys(dagData)) {
+    const val = dagData[key];
+    if (typeof val !== 'object' || val === null || Array.isArray(val)) continue;
+    // Skip meta keys
+    const skip = ['plan','blok','block','week','weeknummer','periode','focus','theme','tsb_target','doel','totaalKm','totalKm','totaal_km'];
+    if (skip.includes(key)) continue;
+    // Find Dutch day name at start of key
+    const keyLC = key.toLowerCase();
+    const dagNaam = dagVolgorde.find(d => keyLC === d || keyLC.startsWith(d + '_') || keyLC.startsWith(d + ' '));
+    if (!dagNaam) continue;
+    // ISO date from embedded datum field or key
+    const iso = val.datum || val.date || null;
+    dagEntries.push({ dagNaam, iso, data: val, key });
+  }
+
+  if (!dagEntries.length) {
+    return html + '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5">' + escapeHtml(JSON.stringify(week, null, 2)) + '</pre>';
+  }
+
+  // Sort by day-of-week order, then by ISO date if available
+  dagEntries.sort((a, b) => {
+    if (a.iso && b.iso) return a.iso.localeCompare(b.iso);
+    return dagVolgorde.indexOf(a.dagNaam) - dagVolgorde.indexOf(b.dagNaam);
   });
 
-  sleutels.forEach(dag => {
-    const d = dagData[dag];
-    if (!d) return;
+  dagEntries.forEach(({ dagNaam, iso, data: d }) => {
+    const isVandaag = iso ? iso === today : false;
 
-    // Compute actual date for this weekday if weekStart is known
-    let datumVanDag = null;
-    if (weekStart) {
-      const idx = dagVolgorde.indexOf(dag.toLowerCase());
-      if (idx >= 0) {
-        const base = new Date(weekStart);
-        base.setUTCDate(base.getUTCDate() + idx);
-        datumVanDag = base.toISOString().slice(0, 10);
-      }
-    }
-    const isVandaag = datumVanDag ? datumVanDag === today
-      : dag.toLowerCase() === new Date().toLocaleDateString('nl-NL', { weekday: 'long' }).toLowerCase();
-
-    const isRust = (d.type || '').toLowerCase().includes('rust') || (d.type || '').toLowerCase() === 'vrij';
-    const abbr = dagKort[dag.toLowerCase()] || dag.slice(0, 2);
-    const typeLC = (d.type || '').toLowerCase();
-    const icon = isRust ? '😴' : (typeLC.includes('loop') || typeLC.includes('run') || typeLC === 'duurloop' || typeLC === 'interval' || typeLC === 'marathon' ? '🏃' : typeLC.includes('fiets') || typeLC.includes('ride') ? '🚴' : typeLC.includes('kracht') ? '💪' : '📅');
+    // Determine type/label
+    const typeRaw = d.type || d.training || d.sessie || d.soort || '';
+    const typeLC = typeRaw.toLowerCase();
+    const duurRaw = d.duur || d.duur_min || d.duration || '';
+    const isRust = typeLC.includes('rust') || typeLC === 'vrij' || typeLC === 'herstel' || typeLC === 'rest'
+      || (!typeRaw && !duurRaw);
+    const abbr = dagKort[dagNaam] || dagNaam.slice(0, 2).replace(/^\w/, c => c.toUpperCase());
+    const icon = isRust ? '😴'
+      : (typeLC.includes('interval') || typeLC.includes('tempo') || typeLC.includes('marathon') ? '🏃'
+      : typeLC.includes('loop') || typeLC.includes('run') || typeLC.includes('duur') || typeLC.includes('easy') ? '🏃'
+      : typeLC.includes('fiets') || typeLC.includes('ride') || typeLC.includes('bike') ? '🚴'
+      : typeLC.includes('kracht') || typeLC.includes('strength') ? '💪'
+      : typeLC.includes('yoga') || typeLC.includes('herstel') ? '🧘'
+      : '📅');
     const zone = d.zones || d.zone || d.intensiteit || '';
-    const zoneKleur = zoneColor[zone] || 'var(--text2)';
+    const zoneKleur = zoneColor[zone] || null;
 
-    html += '<div style="background:var(--surface);border:1px solid ' + (isVandaag ? 'rgba(79,142,247,.5)' : 'var(--border2)') + ';border-radius:12px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;' + (isVandaag ? 'background:rgba(79,142,247,.06)' : '') + '">';
+    html += '<div style="background:var(--surface);border:1px solid '
+      + (isVandaag ? 'rgba(79,142,247,.5)' : 'var(--border2)')
+      + ';border-radius:12px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:8px'
+      + (isVandaag ? ';background:rgba(79,142,247,.06)' : '') + '">';
+
     html += '<div style="min-width:28px;text-align:center;flex-shrink:0">';
     html += '<div style="font-size:10px;font-weight:700;color:' + (isVandaag ? 'var(--accent)' : 'var(--text2)') + ';letter-spacing:.04em">' + abbr + '</div>';
     html += '<div style="font-size:18px;margin-top:1px">' + icon + '</div>';
     html += '</div>';
+
     html += '<div style="flex:1;min-width:0">';
-    html += '<div style="font-size:13px;font-weight:600;color:' + (isRust ? 'var(--muted)' : 'var(--text)') + '">' + escapeHtml(d.type || '—') + '</div>';
+
+    const label = typeRaw || (isRust ? 'Rust' : '—');
+    html += '<div style="font-size:13px;font-weight:600;color:' + (isRust ? 'var(--muted)' : 'var(--text)') + '">' + escapeHtml(label) + '</div>';
+
     if (!isRust) {
-      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">';
-      if (zone) html += '<span style="font-size:10px;font-weight:700;color:' + zoneKleur + '">' + escapeHtml(zone) + '</span>';
-      if (d.duur_min) html += '<span style="font-size:10px;color:var(--text2)">' + d.duur_min + ' min</span>';
-      if (d.afstand_km) html += '<span style="font-size:10px;color:var(--text2)">' + d.afstand_km + ' km</span>';
-      if (d.tempo) html += '<span style="font-size:10px;color:var(--text2)">' + escapeHtml(d.tempo) + '</span>';
-      html += '</div>';
+      const chips = [];
+      if (zone && zoneKleur) chips.push('<span style="font-size:10px;font-weight:700;color:' + zoneKleur + '">' + escapeHtml(zone) + '</span>');
+      if (duurRaw) chips.push('<span style="font-size:10px;color:var(--text2)">' + escapeHtml(String(duurRaw)) + '</span>');
+      const afstand = d.afstand || d.afstand_km || d.distance || d.km || '';
+      if (afstand) chips.push('<span style="font-size:10px;color:var(--text2)">' + escapeHtml(String(afstand)) + ' km</span>');
+      const tempo = d.tempo || d.pace || '';
+      if (tempo) chips.push('<span style="font-size:10px;color:var(--text2)">' + escapeHtml(tempo) + '</span>');
+      const sets = d.sets || d.intervallen || d.structuur || '';
+      if (sets) chips.push('<span style="font-size:10px;color:var(--text2)">' + escapeHtml(String(sets)) + '</span>');
+      if (chips.length) html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">' + chips.join('') + '</div>';
     }
-    if (d.toelichting) html += '<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">' + escapeHtml(d.toelichting) + '</div>';
+
+    const toelichting = d.toelichting || d.reden || d.notes || d.note || '';
+    if (toelichting) html += '<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5">' + escapeHtml(toelichting) + '</div>';
+    const rust = d.rust || d.recovery || '';
+    if (rust && !isRust) html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">Rust: ' + escapeHtml(rust) + '</div>';
+
     html += '</div></div>';
   });
 

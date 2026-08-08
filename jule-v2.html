@@ -906,8 +906,8 @@ body.tab-home .sidebar-stats { display: none; }
         </div>
       </div>
 
-      <div class="race-logo-wrap" id="race-logo-wrap" style="display:none;justify-content:center;padding:12px 20px 4px">
-        <img id="race-logo" alt="Race logo" style="width:100%;max-width:140px;opacity:.72;border-radius:10px">
+      <div class="race-logo-wrap" id="race-logo-wrap" style="display:none;justify-content:center;padding:16px 24px 8px">
+        <img id="race-logo" alt="Race logo" style="width:100%;max-width:150px">
       </div>
 
       <div class="sidebar-tabs">
@@ -1702,11 +1702,13 @@ async function loadRaceLogo(url) {
   if (!wrap || !imgEl || !url) return;
 
   const applyDirect = () => {
-    // CORS blocked: use multiply blend mode with a faint white panel
+    // CORS blocked: vignette mask fades the white corners, only the logo centre stays visible
     imgEl.src = url;
-    imgEl.style.mixBlendMode = 'multiply';
-    wrap.style.background = 'rgba(255,255,255,0.13)';
-    wrap.style.borderRadius = '14px';
+    imgEl.style.opacity = '0.8';
+    imgEl.style.filter = 'saturate(1.15)';
+    const mask = 'radial-gradient(ellipse 66% 60% at 50% 46%, black 35%, transparent 100%)';
+    imgEl.style.maskImage = mask;
+    imgEl.style.webkitMaskImage = mask;
     wrap.style.display = 'flex';
   };
 

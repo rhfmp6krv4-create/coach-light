@@ -419,6 +419,8 @@ body.tab-home .sidebar-hero,
 body.tab-home .sidebar-stats { display: none; }
 /* Logo alleen op Home — op andere tabs komen hero+stats terug en het logo is overbodig */
 body:not(.tab-home) .race-logo-wrap { display: none !important; }
+/* Name + goal label verbergen in sidebar — staat al in top-nav en/of home hero */
+#sidebar-name, #sidebar-race { display: none; }
 .journey-bar-track {
   margin-top: 14px;
   height: 2px;
@@ -908,8 +910,10 @@ body:not(.tab-home) .race-logo-wrap { display: none !important; }
         </div>
       </div>
 
-      <div class="race-logo-wrap" id="race-logo-wrap" style="display:none;justify-content:center;padding:16px 24px 8px">
-        <img id="race-logo" alt="Race logo" style="width:100%;max-width:150px">
+      <div class="race-logo-wrap" id="race-logo-wrap" style="display:none;justify-content:center;padding:20px 24px 12px">
+        <div style="width:130px;height:130px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 6px 24px rgba(0,0,0,0.45)">
+          <img id="race-logo" alt="Race logo" style="width:100%;height:100%;object-fit:cover;display:block">
+        </div>
       </div>
 
       <div class="sidebar-tabs">
@@ -1530,7 +1534,7 @@ async function fetchIntervalsData() {
     const oldest90 = new Date(now - 90 * 86400000);
     const [wR, aR] = await Promise.all([
       fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/wellness?oldest=${fmt(oldest42)}&newest=${fmt(now)}`, { headers }),
-      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldest90)}&newest=${fmt(now)}&limit=90`, { headers }),
+      fetch(`https://intervals.icu/api/v1/athlete/${CONFIG.intervalsId}/activities?oldest=${fmt(oldest90)}&newest=${fmt(now)}&limit=90&fields=gear_name`, { headers }),
     ]);
     intervalsCtx = {
       wellness: wR.ok ? await wR.json() : [],
@@ -1704,13 +1708,8 @@ async function loadRaceLogo(url) {
   if (!wrap || !imgEl || !url) return;
 
   const applyDirect = () => {
-    // CORS blocked: vignette mask fades the white corners, only the logo centre stays visible
+    // Circular container handles clipping — just set src and show
     imgEl.src = url;
-    imgEl.style.opacity = '0.8';
-    imgEl.style.filter = 'saturate(1.15)';
-    const mask = 'radial-gradient(ellipse 66% 60% at 50% 46%, black 35%, transparent 100%)';
-    imgEl.style.maskImage = mask;
-    imgEl.style.webkitMaskImage = mask;
     wrap.style.display = 'flex';
   };
 
@@ -2969,15 +2968,16 @@ async function renderMateriaalTab() {
     const acts = intervalsCtx?.activities || [];
     const gearMap = {};
     acts.forEach(a => {
-      const id = a.gear_id || a.gearId;
-      const naam = a.gear || a.gear_name || a.gearName;
+      const id = a.gear_id || a.gearId || a.icu_gear_id;
+      const naam = a.gear_name || a.gear || a.gearName || a.equipment || a.shoe;
       if (!naam) return;
       const dist = (a.distance || 0) / 1000; // to km
-      if (!gearMap[id || naam]) gearMap[id || naam] = { naam, km: 0, acts: 0 };
-      gearMap[id || naam].km += dist;
-      gearMap[id || naam].acts += 1;
+      const key = id || naam;
+      if (!gearMap[key]) gearMap[key] = { naam, km: 0, acts: 0 };
+      gearMap[key].km += dist;
+      gearMap[key].acts += 1;
     });
-    const items = Object.values(gearMap).filter(g => g.km > 0).sort((a,b) => b.km - a.km);
+    const items = Object.values(gearMap).sort((a,b) => b.km - a.km);
     if (!items.length) {
       el.innerHTML = '<div style="padding:24px 0;text-align:center;color:var(--text2);font-size:13px">Geen schoendata gevonden in Intervals.icu.<br><span style="font-size:12px;color:var(--muted)">Koppel schoenen aan je activiteiten in Strava of Intervals.icu.</span></div>';
       return;
@@ -2985,9 +2985,10 @@ async function renderMateriaalTab() {
     _gearData = items.map(g => ({ name: g.naam, distance: Math.round(g.km * 1000), retired: false, source: 'activities' }));
   }
 
-  const shoes = _gearData
-    .filter(g => !g.retired)
-    .sort((a,b) => (b.distance || 0) - (a.distance || 0));
+  // Prefer running gear; fall back to all gear if no running shoes found
+  const allActive = _gearData.filter(g => !g.retired).sort((a,b) => (b.distance||0)-(a.distance||0));
+  const runGear = allActive.filter(g => /shoe|run|hardloop|trail/i.test(g.name||'') || /run|trail/i.test(g.type||''));
+  const shoes = runGear.length ? runGear : allActive;
   const retired = _gearData.filter(g => g.retired);
 
   let html = '';

@@ -1100,7 +1100,7 @@ function setStatus(s) {
 ═══════════════════════════════════════════ */
 async function loadMem() {
   // Load from v2_ keys, fall back to v1 mem_ keys
-  const [v2macro, v2weeks, v2flags, v2zones, v1macro, v1weeks, v1flags, v1zones, sa, chatH] = await Promise.all([
+  const [v2macro, v2weeks, v2flags, v2zones, v1macro, v1weeks, v1flags, v1zones, sa, v2chat, v1chat] = await Promise.all([
     sbLoad('v2_macroplan'),
     sbLoad('v2_weekplannen'),
     sbLoad('v2_flags'),
@@ -1111,6 +1111,7 @@ async function loadMem() {
     sbLoad('mem_zones'),
     sbLoad('strava_analysis'),
     sbLoad('v2_chat_history'),
+    sbLoad('chat_history'),
   ]);
 
   MEM.macroplan = v2macro || v1macro || null;
@@ -1119,6 +1120,7 @@ async function loadMem() {
   MEM.zones = v2zones || v1zones || null;
   if (sa) stravaAnalysis = sa;
 
+  const chatH = v2chat || v1chat;
   if (chatH?.messages?.length) {
     messages = chatH.messages;
     const container = document.getElementById('coach-messages');

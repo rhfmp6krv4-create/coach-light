@@ -415,6 +415,7 @@ h3 { font-size: 16px; font-weight: 600; }
 }
 
 /* Journey progress bar */
+body.tab-home .sidebar-hero .journey-bar-track { display: none; }
 .journey-bar-track {
   margin-top: 14px;
   height: 2px;
@@ -845,7 +846,7 @@ h3 { font-size: 16px; font-weight: 600; }
 #no-config { display: none; }
 </style>
 </head>
-<body>
+<body class="tab-home">
 
 <!-- No config screen -->
 <div id="no-config" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:32px;gap:16px">
@@ -1593,6 +1594,7 @@ async function saveMem(type, data) {
 ═══════════════════════════════════════════ */
 function switchTab(tab) {
   currentTab = tab;
+  document.body.classList.toggle('tab-home', tab === 'home');
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('[data-tab]').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + tab)?.classList.add('active');

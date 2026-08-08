@@ -417,6 +417,8 @@ h3 { font-size: 16px; font-weight: 600; }
 /* Journey progress bar */
 body.tab-home .sidebar-hero,
 body.tab-home .sidebar-stats { display: none; }
+/* Logo alleen op Home — op andere tabs komen hero+stats terug en het logo is overbodig */
+body:not(.tab-home) .race-logo-wrap { display: none !important; }
 .journey-bar-track {
   margin-top: 14px;
   height: 2px;

@@ -1960,8 +1960,13 @@ function getBestWeekplan() {
   if (!MEM.weekplannen?.length) return null;
   const weeks = Array.isArray(MEM.weekplannen) ? MEM.weekplannen : [MEM.weekplannen];
   const today = new Date().toISOString().slice(0, 10);
+
+  // Default: last saved plan (most recently generated)
+  // Only override if we find something that covers today (score 0) or is a near future week (score 1)
   let best = weeks[weeks.length - 1];
-  let bestScore = 99, bestDist = Infinity;
+  let bestScore = 2; // "last saved" beats past-dated plans; only current/future can beat it
+  let bestDist = Infinity;
+
   weeks.forEach(w => {
     const plan = w.plan || w;
     const dagData = plan.dagen || plan.days || plan;
@@ -1969,16 +1974,16 @@ function getBestWeekplan() {
       .filter(v => v && typeof v === 'object' && !Array.isArray(v))
       .map(v => v.datum || v.date).filter(Boolean).sort();
     const start = isos[0], end = isos[isos.length - 1];
-    if (!start) return;
+    if (!start) return; // no dates → can't score, skip
     if (today >= start && today <= (end || start)) {
+      // Covers today — always wins
       if (bestScore > 0) { best = w; bestScore = 0; bestDist = 0; }
     } else if (start > today) {
+      // Future week — beats last-saved but not current
       const dist = new Date(start) - new Date(today);
       if (bestScore > 1 || (bestScore === 1 && dist < bestDist)) { best = w; bestScore = 1; bestDist = dist; }
-    } else {
-      const dist = new Date(today) - new Date(end || start);
-      if (bestScore > 2 || (bestScore === 2 && dist < bestDist)) { best = w; bestScore = 2; bestDist = dist; }
     }
+    // Past weeks never beat the default last-saved plan
   });
   return best;
 }

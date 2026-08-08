@@ -1511,83 +1511,138 @@ function renderHomeTab() {
 ═══════════════════════════════════════════ */
 function renderMacroplan(macro) {
   if (!macro) return null;
+  const today = new Date().toISOString().slice(0, 10);
   let html = '';
-  if (macro.doel || macro.racedatum || macro.totaalWeken) {
-    html += '<div style="margin-bottom:16px">';
-    if (macro.doel) html += '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">' + escapeHtml(macro.doel) + '</div>';
-    if (macro.racedatum) html += '<div style="font-size:13px;color:var(--text2)">Racedag: ' + escapeHtml(macro.racedatum) + '</div>';
-    if (macro.totaalWeken) html += '<div style="font-size:13px;color:var(--text2)">' + escapeHtml(String(macro.totaalWeken)) + ' weken voorbereiding</div>';
+
+  if (macro.doel || macro.racedatum) {
+    html += '<div style="margin-bottom:14px">';
+    if (macro.doel) html += '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:3px">' + escapeHtml(macro.doel) + '</div>';
+    if (macro.racedatum) html += '<div style="font-size:12px;color:var(--text2)">Racedag: ' + escapeHtml(macro.racedatum) + '</div>';
+    if (macro.totaalWeken) html += '<div style="font-size:12px;color:var(--text2)">' + escapeHtml(String(macro.totaalWeken)) + ' weken</div>';
     html += '</div>';
   }
+
   const fases = macro.fases || macro.fasen || macro.phases || [];
-  if (fases.length) {
-    const kleuren = ['var(--accent)', 'var(--cyan)', 'var(--success)', 'var(--warning)'];
-    fases.forEach((fase, i) => {
-      const kleur = kleuren[i % kleuren.length];
-      html += '<div class="macro-fase-card" style="border-left:3px solid ' + kleur + '">';
-      html += '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">' + escapeHtml(fase.naam || fase.name || 'Fase ' + (i + 1)) + '</div>';
-      const pills = [];
-      if (fase.periode || fase.weken) pills.push(escapeHtml(fase.periode || fase.weken));
-      if (fase.doelCTL) pills.push('CTL doel: ' + escapeHtml(String(fase.doelCTL)));
-      if (fase.weekvolume_km) pills.push(escapeHtml(String(fase.weekvolume_km)) + ' km/week');
-      if (pills.length) html += '<div class="week-dag-pills">' + pills.map(p => '<span class="pill">' + p + '</span>').join('') + '</div>';
-      if (fase.focus) html += '<div style="font-size:13px;color:var(--text2);margin-top:4px">' + escapeHtml(fase.focus) + '</div>';
-      const sessies = fase.sleutelsessies || fase.sessies || [];
-      if (sessies.length) html += '<div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7">' + sessies.map(s => '· ' + escapeHtml(s)).join('<br>') + '</div>';
-      html += '</div>';
-    });
-  } else {
-    html += '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5">' + escapeHtml(JSON.stringify(macro, null, 2)) + '</pre>';
+  if (!fases.length) {
+    return html + '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5">' + escapeHtml(JSON.stringify(macro, null, 2)) + '</pre>';
   }
+
+  fases.forEach((fase, i) => {
+    const start = fase.startdatum || fase.start || fase.van || null;
+    const eind  = fase.einddatum  || fase.eind  || fase.tot || null;
+    const isActief  = start && eind ? today >= start && today <= eind : false;
+    const isGeweest = eind ? today > eind : false;
+    const naam = fase.naam || fase.name || 'Fase ' + (i + 1);
+    const periode = fase.periode || fase.weken || (start && eind ? start + ' – ' + eind : '');
+    const sessies = fase.sleutelsessies || fase.sessies || [];
+
+    html += '<div style="background:var(--surface);border:1px solid ' + (isActief ? 'rgba(79,142,247,.4)' : 'var(--border2)') + ';border-radius:12px;padding:12px 14px;margin-bottom:8px;' + (isActief ? 'background:rgba(79,142,247,.06)' : '') + ';' + (isGeweest ? 'opacity:.5' : '') + '">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:' + (isActief ? '10' : '0') + 'px">';
+
+    // Number badge
+    html += '<div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;' + (isActief ? 'background:var(--accent);color:#fff' : 'background:var(--surface2);color:var(--muted)') + '">' + (i + 1) + '</div>';
+
+    html += '<div style="flex:1;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px">';
+    html += '<div style="font-size:13px;font-weight:' + (isActief ? '700' : '500') + ';color:' + (isActief ? 'var(--text)' : 'var(--text2)') + '">' + escapeHtml(naam);
+    if (isActief) html += ' <span style="font-size:9px;background:rgba(79,142,247,.2);color:var(--accent);border-radius:3px;padding:1px 5px;margin-left:4px;font-weight:600">Nu actief</span>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;align-items:center">';
+    if (periode) html += '<span style="font-size:11px;color:var(--muted)">' + escapeHtml(periode) + '</span>';
+    if (fase.weekvolume_km) html += '<span style="font-size:11px;color:var(--accent);font-weight:600">' + escapeHtml(String(fase.weekvolume_km)) + ' km/w</span>';
+    if (fase.doelCTL) html += '<span style="font-size:11px;color:var(--text2)">CTL ' + escapeHtml(String(fase.doelCTL)) + '</span>';
+    html += '</div></div></div>'; // close pills + flex row
+
+    if (isActief) {
+      if (fase.focus) html += '<div style="font-size:13px;color:var(--text);margin-bottom:6px;padding-left:32px">' + escapeHtml(fase.focus) + '</div>';
+      if (sessies.length) {
+        html += '<ul style="margin:0;padding-left:50px;list-style:disc">';
+        sessies.forEach(s => { html += '<li style="font-size:12px;color:var(--text2);margin-bottom:3px">' + escapeHtml(s) + '</li>'; });
+        html += '</ul>';
+      }
+    } else {
+      if (fase.focus) html += '<div style="font-size:12px;color:var(--muted);padding-left:32px">' + escapeHtml(fase.focus) + '</div>';
+    }
+    html += '</div>';
+  });
+
   return html;
 }
 
 function renderWeekplan(week) {
   if (!week) return null;
+  const today = new Date().toISOString().slice(0, 10);
   let html = '';
-  const hasHeader = week.week || week.startdatum || week.totaalKm;
-  if (hasHeader) {
-    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">';
+
+  if (week.week || week.startdatum || week.totaalKm) {
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">';
     html += '<div>';
     if (week.week) html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(week.week) + '</div>';
     if (week.startdatum) html += '<div style="font-size:12px;color:var(--text2)">Vanaf ' + escapeHtml(week.startdatum) + '</div>';
     html += '</div>';
-    if (week.totaalKm) html += '<span class="pill">' + escapeHtml(String(week.totaalKm)) + ' km</span>';
+    if (week.totaalKm) html += '<span style="font-size:12px;color:var(--accent);font-weight:600">' + escapeHtml(String(week.totaalKm)) + ' km</span>';
     html += '</div>';
   }
+
   const dagVolgorde = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+  const dagKort = { maandag:'Ma', dinsdag:'Di', woensdag:'Wo', donderdag:'Do', vrijdag:'Vr', zaterdag:'Za', zondag:'Zo' };
+  const zoneColor = { 'Z1':'#34d399','Z2':'#60a5fa','Z3':'#f59e0b','Z4':'#f87171','Z5':'#a78bfa' };
+  const weekStart = week.startdatum || week.start_datum || null;
+
   const dagData = week.dagen || week.days || {};
   const sleutels = Object.keys(dagData);
-  if (sleutels.length) {
-    sleutels.sort((a, b) => {
-      const ia = dagVolgorde.indexOf(a.toLowerCase());
-      const ib = dagVolgorde.indexOf(b.toLowerCase());
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    });
-    sleutels.forEach(dag => {
-      const d = dagData[dag];
-      if (!d) return;
-      const isRust = (d.type || '').toLowerCase().includes('rust') || (d.type || '').toLowerCase() === 'vrij';
-      const kleur = isRust ? 'var(--muted)' : 'var(--accent)';
-      html += '<div class="week-dag-card"' + (isRust ? '' : ' style="border-left:3px solid ' + kleur + '"') + '>';
-      html += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
-      html += '<div style="font-size:13px;font-weight:600;color:var(--text);text-transform:capitalize">' + escapeHtml(dag) + '</div>';
-      html += '<div style="font-size:12px;color:' + (isRust ? 'var(--muted)' : 'var(--text2)') + '">' + escapeHtml(d.type || '') + '</div>';
-      html += '</div>';
-      if (!isRust) {
-        const pills = [];
-        if (d.duur_min) pills.push(d.duur_min + ' min');
-        if (d.afstand_km) pills.push(d.afstand_km + ' km');
-        if (d.zones || d.zone) pills.push(escapeHtml(d.zones || d.zone));
-        if (d.tempo) pills.push(escapeHtml(d.tempo));
-        if (pills.length) html += '<div class="week-dag-pills">' + pills.map(p => '<span class="pill">' + p + '</span>').join('') + '</div>';
-        if (d.toelichting) html += '<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-top:4px">' + escapeHtml(d.toelichting) + '</div>';
-      }
-      html += '</div>';
-    });
-  } else {
-    html += '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5">' + escapeHtml(JSON.stringify(week, null, 2)) + '</pre>';
+  if (!sleutels.length) {
+    return html + '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word">' + escapeHtml(JSON.stringify(week, null, 2)) + '</pre>';
   }
+
+  sleutels.sort((a, b) => {
+    const ia = dagVolgorde.indexOf(a.toLowerCase());
+    const ib = dagVolgorde.indexOf(b.toLowerCase());
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  sleutels.forEach(dag => {
+    const d = dagData[dag];
+    if (!d) return;
+
+    // Compute actual date for this weekday if weekStart is known
+    let datumVanDag = null;
+    if (weekStart) {
+      const idx = dagVolgorde.indexOf(dag.toLowerCase());
+      if (idx >= 0) {
+        const base = new Date(weekStart);
+        base.setUTCDate(base.getUTCDate() + idx);
+        datumVanDag = base.toISOString().slice(0, 10);
+      }
+    }
+    const isVandaag = datumVanDag ? datumVanDag === today
+      : dag.toLowerCase() === new Date().toLocaleDateString('nl-NL', { weekday: 'long' }).toLowerCase();
+
+    const isRust = (d.type || '').toLowerCase().includes('rust') || (d.type || '').toLowerCase() === 'vrij';
+    const abbr = dagKort[dag.toLowerCase()] || dag.slice(0, 2);
+    const typeLC = (d.type || '').toLowerCase();
+    const icon = isRust ? '😴' : (typeLC.includes('loop') || typeLC.includes('run') || typeLC === 'duurloop' || typeLC === 'interval' || typeLC === 'marathon' ? '🏃' : typeLC.includes('fiets') || typeLC.includes('ride') ? '🚴' : typeLC.includes('kracht') ? '💪' : '📅');
+    const zone = d.zones || d.zone || d.intensiteit || '';
+    const zoneKleur = zoneColor[zone] || 'var(--text2)';
+
+    html += '<div style="background:var(--surface);border:1px solid ' + (isVandaag ? 'rgba(79,142,247,.5)' : 'var(--border2)') + ';border-radius:12px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;' + (isVandaag ? 'background:rgba(79,142,247,.06)' : '') + '">';
+    html += '<div style="min-width:28px;text-align:center;flex-shrink:0">';
+    html += '<div style="font-size:10px;font-weight:700;color:' + (isVandaag ? 'var(--accent)' : 'var(--text2)') + ';letter-spacing:.04em">' + abbr + '</div>';
+    html += '<div style="font-size:18px;margin-top:1px">' + icon + '</div>';
+    html += '</div>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:13px;font-weight:600;color:' + (isRust ? 'var(--muted)' : 'var(--text)') + '">' + escapeHtml(d.type || '—') + '</div>';
+    if (!isRust) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">';
+      if (zone) html += '<span style="font-size:10px;font-weight:700;color:' + zoneKleur + '">' + escapeHtml(zone) + '</span>';
+      if (d.duur_min) html += '<span style="font-size:10px;color:var(--text2)">' + d.duur_min + ' min</span>';
+      if (d.afstand_km) html += '<span style="font-size:10px;color:var(--text2)">' + d.afstand_km + ' km</span>';
+      if (d.tempo) html += '<span style="font-size:10px;color:var(--text2)">' + escapeHtml(d.tempo) + '</span>';
+      html += '</div>';
+    }
+    if (d.toelichting) html += '<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">' + escapeHtml(d.toelichting) + '</div>';
+    html += '</div></div>';
+  });
+
   return html;
 }
 

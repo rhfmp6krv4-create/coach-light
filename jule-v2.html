@@ -1100,27 +1100,21 @@ function setStatus(s) {
 ═══════════════════════════════════════════ */
 async function loadMem() {
   // Load from v2_ keys, fall back to v1 mem_ keys
-  const [v2macro, v2weeks, v2flags, v2zones, v1macro, v1weeks, v1flags, v1zones, sa, v2chat, v1chat] = await Promise.all([
-    sbLoad('v2_macroplan'),
-    sbLoad('v2_weekplannen'),
-    sbLoad('v2_flags'),
-    sbLoad('v2_zones'),
+  const [macro, weeks, flags, zones, sa, chatH] = await Promise.all([
     sbLoad('mem_macroplan'),
     sbLoad('mem_weekplannen'),
     sbLoad('mem_flags'),
     sbLoad('mem_zones'),
     sbLoad('strava_analysis'),
-    sbLoad('v2_chat_history'),
     sbLoad('chat_history'),
   ]);
 
-  MEM.macroplan = v2macro || v1macro || null;
-  MEM.weekplannen = v2weeks || v1weeks || [];
-  MEM.flags = v2flags || v1flags || [];
-  MEM.zones = v2zones || v1zones || null;
+  MEM.macroplan = macro || null;
+  MEM.weekplannen = weeks || [];
+  MEM.flags = flags || [];
+  MEM.zones = zones || null;
   if (sa) stravaAnalysis = sa;
 
-  const chatH = v2chat || v1chat;
   if (chatH?.messages?.length) {
     messages = chatH.messages;
     const container = document.getElementById('coach-messages');
@@ -1132,7 +1126,7 @@ async function loadMem() {
 
 async function saveMem(type, data) {
   MEM[type] = data;
-  await sbSave('v2_' + type, data);
+  await sbSave('mem_' + type, data);
 }
 
 /* ═══════════════════════════════════════════
@@ -1619,7 +1613,7 @@ async function submitMessage() {
     addMessage('assistant', reply);
 
     parseCoachOutput(reply);
-    await sbSave('v2_chat_history', { messages: messages.slice(-60) });
+    await sbSave('chat_history', { messages: messages.slice(-60) });
   } catch(e) {
     removeTyping();
     addMessage('assistant', '❌ Fout: ' + e.message);

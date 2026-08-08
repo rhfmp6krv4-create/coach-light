@@ -457,25 +457,26 @@ body.tab-home .sidebar-progress { display: none; }
 /* Journey progress bar */
 .journey-bar-track {
   margin-top: 14px;
-  height: 2px;
+  height: 6px;
   background: rgba(100,140,255,0.12);
-  border-radius: 2px;
+  border-radius: 3px;
   position: relative;
 }
 .journey-bar-fill {
   height: 100%;
   background: var(--grad);
-  border-radius: 2px;
+  border-radius: 3px;
   position: relative;
   transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
 }
 .journey-bar-fill::after {
   content: '';
   position: absolute;
-  right: -3px; top: -3px;
-  width: 8px; height: 8px;
+  right: -7px; top: -5px;
+  width: 16px; height: 16px;
   border-radius: 50%;
   background: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(34,211,238,0.18);
 }
 
 /* Stats grid — base style; display/position set by tab-state rules above */
@@ -1655,6 +1656,10 @@ function switchTab(tab) {
   if (tab === 'kracht') renderKrachtTab();
   if (tab === 'fysio') renderFysioTab();
   if (tab === 'materiaal') renderMateriaalTab();
+  if (tab === 'chat') {
+    const msgs = document.getElementById('coach-messages');
+    if (msgs) requestAnimationFrame(() => msgs.scrollTop = msgs.scrollHeight);
+  }
 }
 
 function goToPlanning(sectionId) {

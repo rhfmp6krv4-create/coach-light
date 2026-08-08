@@ -804,9 +804,13 @@ h3 { font-size: 16px; font-weight: 600; }
 .injury-banner { background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:14px 16px;margin-bottom:14px }
 .fysio-phase { display:none }
 .fysio-phase.active { display:block }
-.fysio-region-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px }
-.fysio-region-btn { background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 8px;cursor:pointer;font-family:var(--font);color:var(--text2);font-size:12px;font-weight:500;text-align:center;transition:background .12s,border-color .12s,color .12s;-webkit-tap-highlight-color:transparent }
-.fysio-region-btn.selected { background:rgba(79,142,247,.1);border-color:var(--accent);color:var(--text) }
+.body-hotspot { cursor:pointer }
+.body-hotspot .hs-dot { transition:fill .15s,stroke .15s,r .15s }
+.body-hotspot:hover .hs-dot { fill:rgba(79,142,247,.3);stroke:var(--accent) }
+.body-hotspot.hs-selected .hs-dot { fill:rgba(79,142,247,.4);stroke:var(--accent);r:11 }
+.body-hotspot .hs-label { fill:var(--text2);font-family:Inter,-apple-system,sans-serif;font-size:9.5px;transition:fill .15s }
+.body-hotspot:hover .hs-label { fill:var(--accent) }
+.body-hotspot.hs-selected .hs-label { fill:var(--accent);font-weight:600 }
 .v3chip { background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;cursor:pointer;font-family:var(--font);color:var(--text2);font-size:13px;text-align:left;width:100%;margin-bottom:6px;transition:background .12s,border-color .12s;-webkit-tap-highlight-color:transparent;display:block }
 .v3chip.selected { background:rgba(251,191,36,.08);border-color:var(--warning);color:var(--text) }
 .injury-history-item { display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border) }
@@ -1256,17 +1260,97 @@ h3 { font-size: 16px; font-weight: 600; }
           <div id="fysio-phase-A" class="fysio-phase active">
             <div style="font-size:17px;font-weight:700;margin-bottom:4px">Nieuwe klacht</div>
             <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Selecteer het aangedane gebied</div>
-            <div class="fysio-region-grid">
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Knie')">🦵 Knie</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Enkel')">🦶 Enkel</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Heup/TFL')">🍑 Heup/TFL</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Kuit/Achillees')">🦿 Kuit/Achillees</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Hamstring')">🎿 Hamstring</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Voet/Fascia')">👟 Voet/Fascia</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Rug/SI')">🫀 Rug/SI</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Schouder/Nek')">💆 Schouder</button>
-              <button class="fysio-region-btn" onclick="selectFysioRegio('Overig')">❓ Overig</button>
-            </div>
+            <svg id="fysio-body-svg" viewBox="0 0 300 460" style="width:100%;max-width:320px;display:block;margin:0 auto;overflow:visible" aria-label="Lichaam kaart">
+              <!-- Body silhouette -->
+              <g fill="var(--surface2)" stroke="var(--border)" stroke-width="1.5">
+                <!-- Head -->
+                <circle cx="150" cy="38" r="26"/>
+                <!-- Neck -->
+                <rect x="143" y="62" width="14" height="14" rx="4"/>
+                <!-- Torso -->
+                <rect x="110" y="75" width="80" height="100" rx="12"/>
+                <!-- Left arm -->
+                <rect x="84" y="78" width="26" height="82" rx="13"/>
+                <!-- Right arm -->
+                <rect x="190" y="78" width="26" height="82" rx="13"/>
+                <!-- Left upper leg -->
+                <rect x="114" y="173" width="34" height="90" rx="12"/>
+                <!-- Right upper leg -->
+                <rect x="152" y="173" width="34" height="90" rx="12"/>
+                <!-- Left lower leg -->
+                <rect x="116" y="261" width="30" height="100" rx="10"/>
+                <!-- Right lower leg -->
+                <rect x="154" y="261" width="30" height="100" rx="10"/>
+                <!-- Left foot -->
+                <rect x="108" y="357" width="38" height="18" rx="7"/>
+                <!-- Right foot -->
+                <rect x="154" y="357" width="38" height="18" rx="7"/>
+              </g>
+
+              <!-- HOTSPOTS — left labels -->
+              <!-- Schouder/Nek -->
+              <g class="body-hotspot" data-regio="Schouder/Nek" onclick="selectFysioRegio('Schouder/Nek')">
+                <line x1="60" y1="82" x2="107" y2="82" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="107" cy="82" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="55" y="86" text-anchor="end">Schouder/Nek</text>
+              </g>
+
+              <!-- Rug/SI -->
+              <g class="body-hotspot" data-regio="Rug/SI" onclick="selectFysioRegio('Rug/SI')">
+                <line x1="60" y1="140" x2="111" y2="140" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="111" cy="140" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="55" y="144" text-anchor="end">Rug/SI</text>
+              </g>
+
+              <!-- Heup/TFL -->
+              <g class="body-hotspot" data-regio="Heup/TFL" onclick="selectFysioRegio('Heup/TFL')">
+                <line x1="60" y1="188" x2="114" y2="188" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="114" cy="188" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="55" y="192" text-anchor="end">Heup/TFL</text>
+              </g>
+
+              <!-- Knie -->
+              <g class="body-hotspot" data-regio="Knie" onclick="selectFysioRegio('Knie')">
+                <line x1="60" y1="262" x2="114" y2="262" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="114" cy="262" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="55" y="266" text-anchor="end">Knie</text>
+              </g>
+
+              <!-- Enkel -->
+              <g class="body-hotspot" data-regio="Enkel" onclick="selectFysioRegio('Enkel')">
+                <line x1="60" y1="354" x2="114" y2="354" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="114" cy="354" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="55" y="358" text-anchor="end">Enkel</text>
+              </g>
+
+              <!-- HOTSPOTS — right labels -->
+              <!-- Hamstring -->
+              <g class="body-hotspot" data-regio="Hamstring" onclick="selectFysioRegio('Hamstring')">
+                <line x1="240" y1="215" x2="186" y2="215" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="186" cy="215" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="245" y="219" text-anchor="start">Hamstring</text>
+              </g>
+
+              <!-- Kuit/Achillees -->
+              <g class="body-hotspot" data-regio="Kuit/Achillees" onclick="selectFysioRegio('Kuit/Achillees')">
+                <line x1="240" y1="305" x2="184" y2="305" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="184" cy="305" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="245" y="309" text-anchor="start">Kuit/Achillees</text>
+              </g>
+
+              <!-- Voet/Fascia -->
+              <g class="body-hotspot" data-regio="Voet/Fascia" onclick="selectFysioRegio('Voet/Fascia')">
+                <line x1="240" y1="368" x2="192" y2="368" stroke="var(--border)" stroke-width="1"/>
+                <circle class="hs-dot" cx="192" cy="368" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="245" y="372" text-anchor="start">Voet/Fascia</text>
+              </g>
+
+              <!-- Overig — bottom center -->
+              <g class="body-hotspot" data-regio="Overig" onclick="selectFysioRegio('Overig')">
+                <circle class="hs-dot" cx="150" cy="435" r="9" fill="rgba(79,142,247,.12)" stroke="var(--text2)" stroke-width="1.5"/>
+                <text class="hs-label" x="150" y="452" text-anchor="middle">Overig</text>
+              </g>
+            </svg>
           </div>
 
           <!-- Phase B: context -->
@@ -2614,6 +2698,9 @@ function selectFysioRegio(regio) {
   _fysioState = { regio, pijn: null, duur: null, flags: [] };
   document.getElementById('fysio-phase-b-title').textContent = regio + ' — Context';
   document.querySelectorAll('.v3chip').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('#fysio-body-svg .body-hotspot').forEach(g => {
+    g.classList.toggle('hs-selected', g.dataset.regio === regio);
+  });
   fysioToPhaseB();
 }
 

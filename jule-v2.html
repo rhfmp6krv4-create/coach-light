@@ -1956,15 +1956,50 @@ function renderStatusTab() {
 /* ═══════════════════════════════════════════
    HOME TAB RENDERER
 ═══════════════════════════════════════════ */
-function getTodayFromWeekplan() {
+function getBestWeekplan() {
   if (!MEM.weekplannen?.length) return null;
-  const latest = Array.isArray(MEM.weekplannen)
-    ? MEM.weekplannen[MEM.weekplannen.length - 1]
-    : MEM.weekplannen;
-  const dagData = latest?.dagen || latest?.days || {};
+  const weeks = Array.isArray(MEM.weekplannen) ? MEM.weekplannen : [MEM.weekplannen];
+  const today = new Date().toISOString().slice(0, 10);
+  let best = weeks[weeks.length - 1];
+  let bestScore = 99, bestDist = Infinity;
+  weeks.forEach(w => {
+    const plan = w.plan || w;
+    const dagData = plan.dagen || plan.days || plan;
+    const isos = Object.values(dagData)
+      .filter(v => v && typeof v === 'object' && !Array.isArray(v))
+      .map(v => v.datum || v.date).filter(Boolean).sort();
+    const start = isos[0], end = isos[isos.length - 1];
+    if (!start) return;
+    if (today >= start && today <= (end || start)) {
+      if (bestScore > 0) { best = w; bestScore = 0; bestDist = 0; }
+    } else if (start > today) {
+      const dist = new Date(start) - new Date(today);
+      if (bestScore > 1 || (bestScore === 1 && dist < bestDist)) { best = w; bestScore = 1; bestDist = dist; }
+    } else {
+      const dist = new Date(today) - new Date(end || start);
+      if (bestScore > 2 || (bestScore === 2 && dist < bestDist)) { best = w; bestScore = 2; bestDist = dist; }
+    }
+  });
+  return best;
+}
+
+function getTodayFromWeekplan() {
+  const best = getBestWeekplan();
+  if (!best) return null;
+  const plan = best.plan || best;
+  const dagData = plan.dagen || plan.days || plan;
   const dagNamen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
   const todayNl = dagNamen[new Date().getDay()];
-  const d = dagData[todayNl];
+  const todayIso = new Date().toISOString().slice(0, 10);
+  // Try exact day name match, then compound key with today's date
+  let d = dagData[todayNl];
+  if (!d) {
+    const entry = Object.entries(dagData).find(([k, v]) => {
+      if (typeof v !== 'object' || !v) return false;
+      return k.toLowerCase().startsWith(todayNl) || v.datum === todayIso || v.date === todayIso;
+    });
+    d = entry?.[1];
+  }
   if (!d) return null;
   return { dag: todayNl, ...d };
 }
@@ -2309,11 +2344,11 @@ function renderPlanningTab() {
     macroEl.innerHTML = '<div class="planning-empty">Nog geen macroplan.<br><button class="planning-action-btn" onclick="quickSend(\'Maak een macroplan voor de komende maanden richting mijn marathondoel. Inclueer periodisering (opbouw/piek/taper), wekelijks volume en sleutelsessies per fase. Sluit af met MACROPLAN_JSON.\');switchTab(\'chat\')">Macroplan aanvragen</button></div>';
   }
 
-  // Most recent weekplan
+  // Most relevant weekplan: covers today > nearest future > most recent past
   const weekEl = document.getElementById('planning-week-content');
   if (MEM.weekplannen?.length) {
-    const latest = Array.isArray(MEM.weekplannen) ? MEM.weekplannen[MEM.weekplannen.length - 1] : MEM.weekplannen;
-    const rendered = renderWeekplan(latest);
+    const best = getBestWeekplan();
+    const rendered = renderWeekplan(best);
     weekEl.innerHTML = '<div style="padding:4px 0">' + rendered + '</div>';
     if (Array.isArray(MEM.weekplannen) && MEM.weekplannen.length > 1) {
       weekEl.innerHTML += '<div style="font-size:11px;color:var(--muted);margin-top:8px">' + MEM.weekplannen.length + ' weekplannen opgeslagen</div>';

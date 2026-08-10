@@ -2088,6 +2088,7 @@ async function generateHomeInsight() {
   if (!el) return;
 
   // Build a fingerprint to detect when data actually changed
+  const todayIso = new Date().toISOString().slice(0, 10);
   const w = intervalsCtx?.wellness;
   const latest = w?.length ? w[w.length - 1] : null;
   const ctl = latest?.ctl != null ? Math.round(latest.ctl) : null;
@@ -2095,7 +2096,7 @@ async function generateHomeInsight() {
   const tsb = (ctl != null && atl != null) ? Math.round(ctl - atl) : null;
   const flagCount = (MEM.flags || []).length;
   const weekCount = (MEM.weekplannen || []).length;
-  const fingerprint = `${ctl}-${atl}-${tsb}-${flagCount}-${weekCount}`;
+  const fingerprint = `${todayIso}-${ctl}-${atl}-${tsb}-${flagCount}-${weekCount}`;
 
   if (_homeInsightCache?.key === fingerprint) {
     el.innerHTML = _homeInsightCache.html;
@@ -2235,19 +2236,11 @@ function renderWeekplan(week) {
   // Unwrap { plan: { ... } } wrapper if present
   const plan = week.plan || week;
 
-  let html = '';
-
-  // Header: week label + focus/blok
+  // Collect label fields (header is rebuilt after correcting dates below)
   const weekLabel = plan.week || plan.weeknummer || plan.periode || week.week || '';
   const blokLabel = plan.blok || plan.block || '';
   const focusLabel = plan.focus || plan.theme || '';
-  if (weekLabel || blokLabel) {
-    html += '<div style="margin-bottom:12px">';
-    if (weekLabel) html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(weekLabel) + '</div>';
-    if (blokLabel) html += '<div style="font-size:12px;color:var(--accent);margin-top:2px">' + escapeHtml(blokLabel) + '</div>';
-    if (focusLabel) html += '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + escapeHtml(focusLabel) + '</div>';
-    html += '</div>';
-  }
+  let html = '';
 
   // Collect day entries: handles { maandag: {...} }, { dagen: { maandag: {...} } },
   // and coach compound keys like { zondag_19_juli: {...} }
@@ -2273,14 +2266,69 @@ function renderWeekplan(week) {
     return html + '<pre style="font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5">' + escapeHtml(JSON.stringify(week, null, 2)) + '</pre>';
   }
 
-  // Sort by day-of-week order, then by ISO date if available
-  dagEntries.sort((a, b) => {
-    if (a.iso && b.iso) return a.iso.localeCompare(b.iso);
-    return dagVolgorde.indexOf(a.dagNaam) - dagVolgorde.indexOf(b.dagNaam);
+  // Sort by day-of-week order (always use named order, ignore potentially wrong ISO dates)
+  dagEntries.sort((a, b) => dagVolgorde.indexOf(a.dagNaam) - dagVolgorde.indexOf(b.dagNaam));
+
+  // Compute correct ISO dates from day names + week anchor.
+  // The embedded ISO dates may be wrong (coach AI date drift), so we derive correct dates
+  // by finding the Monday of the week the earliest embedded date falls in, then offset per day.
+  const dagToOffset = { maandag:0, dinsdag:1, woensdag:2, donderdag:3, vrijdag:4, zaterdag:5, zondag:6 };
+  const rawIsos = dagEntries.map(e => e.iso).filter(Boolean).sort();
+  let weekMonday = null;
+  if (rawIsos.length) {
+    // Use earliest embedded ISO to find the week's Monday
+    const anchor = new Date(rawIsos[0]);
+    const dow = anchor.getDay(); // 0=Sun,1=Mon,...
+    const toMon = dow === 0 ? -6 : 1 - dow;
+    weekMonday = new Date(anchor);
+    weekMonday.setDate(weekMonday.getDate() + toMon);
+  } else {
+    // No embedded dates — assume plan is for the current week
+    const now = new Date(today);
+    const dow = now.getDay();
+    const toMon = dow === 0 ? -6 : 1 - dow;
+    weekMonday = new Date(now);
+    weekMonday.setDate(weekMonday.getDate() + toMon);
+  }
+  // Assign corrected ISO to each entry
+  dagEntries.forEach(e => {
+    const offset = dagToOffset[e.dagNaam] ?? 0;
+    const d = new Date(weekMonday);
+    d.setDate(d.getDate() + offset);
+    e.isoCalc = d.toISOString().slice(0, 10);
   });
 
-  dagEntries.forEach(({ dagNaam, iso, data: d }) => {
-    const isVandaag = iso ? iso === today : false;
+  // Rebuild week header from corrected dates
+  const calFirst = dagEntries[0]?.isoCalc;
+  const calLast = dagEntries[dagEntries.length - 1]?.isoCalc;
+  const fmtNlShort = iso => {
+    if (!iso) return '';
+    const [,, dd] = iso.split('-');
+    return parseInt(dd) + '';
+  };
+  const fmtNlFull = iso => {
+    if (!iso) return '';
+    const maanden = ['','jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    const [y, m, dd] = iso.split('-');
+    return parseInt(dd) + ' ' + maanden[parseInt(m)] + ' ' + y;
+  };
+  const correctWeekLabel = calFirst && calLast
+    ? fmtNlShort(calFirst) + '–' + fmtNlFull(calLast)
+    : weekLabel;
+
+  // Re-render header with corrected label (replaces whatever the plan stored)
+  html = '';
+  if (correctWeekLabel || blokLabel) {
+    html += '<div style="margin-bottom:12px">';
+    html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(correctWeekLabel) + '</div>';
+    if (blokLabel) html += '<div style="font-size:12px;color:var(--accent);margin-top:2px">' + escapeHtml(blokLabel) + '</div>';
+    if (focusLabel) html += '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + escapeHtml(focusLabel) + '</div>';
+    html += '</div>';
+  }
+
+  dagEntries.forEach(({ dagNaam, iso: _rawIso, isoCalc, data: d }) => {
+    const iso = isoCalc; // always use calendar-corrected date
+    const isVandaag = iso === today;
 
     // Determine type/label
     const typeRaw = d.type || d.training || d.sessie || d.soort || '';
@@ -2304,8 +2352,10 @@ function renderWeekplan(week) {
       + ';border-radius:12px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:8px'
       + (isVandaag ? ';background:rgba(79,142,247,.06)' : '') + '">';
 
-    html += '<div style="min-width:28px;text-align:center;flex-shrink:0">';
+    const dayNum = iso ? parseInt(iso.split('-')[2]) : '';
+    html += '<div style="min-width:32px;text-align:center;flex-shrink:0">';
     html += '<div style="font-size:10px;font-weight:700;color:' + (isVandaag ? 'var(--accent)' : 'var(--text2)') + ';letter-spacing:.04em">' + abbr + '</div>';
+    if (dayNum) html += '<div style="font-size:9px;color:' + (isVandaag ? 'var(--accent)' : 'var(--muted)') + ';margin-top:0px">' + dayNum + '</div>';
     html += '<div style="font-size:18px;margin-top:1px">' + icon + '</div>';
     html += '</div>';
 

@@ -1681,7 +1681,11 @@ function updateSidebarStats() {
   const ctl = latest.ctl != null ? Math.round(latest.ctl) : null;
   const atl = latest.atl != null ? Math.round(latest.atl) : null;
   const tsb = (ctl != null && atl != null) ? Math.round(ctl - atl) : null;
-  const acwr = (ctl && atl && ctl > 0) ? (atl / ctl).toFixed(2) : null;
+  // Gebruik echte ACWR (7d km / 28d gem) indien activiteitendata beschikbaar
+  const acwrCalc = computeWeeklyACWR(intervalsCtx?.activities || []);
+  const acwrVal = acwrCalc.current?.acwr != null
+    ? acwrCalc.current.acwr.toFixed(2)
+    : (ctl && atl && ctl > 0 ? (atl / ctl).toFixed(2) : null);
 
   if (ctl != null) document.getElementById('stat-ctl').textContent = ctl;
   if (atl != null) document.getElementById('stat-atl').textContent = atl;
@@ -1690,11 +1694,11 @@ function updateSidebarStats() {
     el.textContent = (tsb > 0 ? '+' : '') + tsb;
     el.className = 'stat-val ' + (tsb > 5 ? 'good' : tsb < -10 ? 'crit' : tsb < -5 ? 'warn' : '');
   }
-  if (acwr != null) {
+  if (acwrVal != null) {
     const el = document.getElementById('stat-acwr');
-    el.textContent = acwr;
-    const v = parseFloat(acwr);
-    el.className = 'stat-val ' + (v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
+    el.textContent = acwrVal;
+    const v = parseFloat(acwrVal);
+    el.className = 'stat-val ' + (v < 0.8 ? '' : v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
   }
 
   // Journey progress bar (sidebar) — 20 weeks training window
@@ -1795,19 +1799,180 @@ async function loadRaceLogo(url) {
 }
 
 /* ═══════════════════════════════════════════
+   ACWR BEREKENING
+═══════════════════════════════════════════ */
+function computeWeeklyACWR(rawActivities) {
+  const today = new Date();
+  // km per datum (alle activiteiten met afstand)
+  const kmByDate = {};
+  (rawActivities || []).forEach(a => {
+    if (!a.start_date_local) return;
+    const km = (a.distance || 0) / 1000;
+    if (km < 0.1) return;
+    const d = a.start_date_local.split('T')[0];
+    kmByDate[d] = (kmByDate[d] || 0) + km;
+  });
+
+  // Bouw 56 dagen (8 weken) dagelijkse km-reeks
+  const allDays = [];
+  for (let i = 55; i >= 0; i--) {
+    const dt = new Date(today);
+    dt.setDate(dt.getDate() - i);
+    const iso = dt.toISOString().slice(0, 10);
+    allDays.push({ iso, km: Math.round((kmByDate[iso] || 0) * 10) / 10 });
+  }
+
+  // 8 wekelijkse buckets, meest recent eerst
+  const weeks = [];
+  for (let w = 0; w < 8; w++) {
+    const endIdx = 55 - w * 7;
+    const startIdx = Math.max(0, endIdx - 6);
+    const slice = allDays.slice(startIdx, endIdx + 1);
+    const km = Math.round(slice.reduce((s, d) => s + d.km, 0) * 10) / 10;
+    weeks.unshift({ iso: allDays[endIdx]?.iso, km, weekIdx: 7 - w });
+  }
+
+  // ACWR per week: acute=die week, chronic=gemiddelde van 4 weken
+  weeks.forEach((w, i) => {
+    if (i < 3) { w.acwr = null; return; } // niet genoeg history
+    const chronic = (weeks[i].km + weeks[i - 1].km + weeks[i - 2].km + weeks[i - 3].km) / 4;
+    w.chronic = Math.round(chronic * 10) / 10;
+    w.acwr = chronic > 0 ? Math.round((w.km / chronic) * 100) / 100 : null;
+  });
+
+  const current = weeks[7]; // meest recente week
+  return { weeks, current };
+}
+
+function acwrZone(v) {
+  if (v == null) return { kleur: 'var(--muted)', label: '—', bg: 'rgba(100,100,120,.1)' };
+  if (v < 0.8)   return { kleur: 'var(--accent)', label: 'Onderbelast', bg: 'rgba(79,142,247,.1)' };
+  if (v <= 1.3)  return { kleur: 'var(--success)', label: 'Optimaal', bg: 'rgba(52,211,153,.1)' };
+  if (v <= 1.5)  return { kleur: 'var(--warning)', label: 'Let op', bg: 'rgba(245,158,11,.1)' };
+  return { kleur: 'var(--danger)', label: 'Overbelasting', bg: 'rgba(248,113,113,.1)' };
+}
+
+function renderACWRChart(weeks) {
+  const maxKm = Math.max(...weeks.map(w => w.km), 1);
+  const W = 320, H = 130, PAD_L = 28, PAD_B = 32, PAD_T = 12, PAD_R = 8;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+  const barW = Math.floor(chartW / weeks.length) - 4;
+  const barSpacing = chartW / weeks.length;
+
+  const yScale = v => PAD_T + chartH - (v / maxKm) * chartH;
+
+  let bars = '';
+  weeks.forEach((w, i) => {
+    const x = PAD_L + i * barSpacing + (barSpacing - barW) / 2;
+    const barH = (w.km / maxKm) * chartH;
+    const y = PAD_T + chartH - barH;
+    const zone = acwrZone(w.acwr);
+    const fill = w.km > 0 ? zone.kleur : 'var(--border2)';
+    const isLast = i === weeks.length - 1;
+
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${Math.max(barH, 2).toFixed(1)}"
+      rx="3" fill="${fill}" opacity="${isLast ? '1' : '0.55'}"/>`;
+
+    // ACWR label boven de bar
+    if (w.acwr != null && w.km > 0) {
+      bars += `<text x="${(x + barW / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}"
+        text-anchor="middle" font-size="8" fill="${zone.kleur}" font-weight="${isLast ? '700' : '400'}">${w.acwr.toFixed(2)}</text>`;
+    }
+
+    // Week label (dag v/d maand van maandag)
+    const lbl = w.iso ? parseInt(w.iso.split('-')[2]) + '' : '';
+    bars += `<text x="${(x + barW / 2).toFixed(1)}" y="${(H - 6).toFixed(1)}"
+      text-anchor="middle" font-size="8.5" fill="${isLast ? 'var(--text)' : 'var(--muted)'}">${lbl}</text>`;
+
+    // km label in bar (als hoog genoeg)
+    if (barH > 18 && w.km > 0) {
+      bars += `<text x="${(x + barW / 2).toFixed(1)}" y="${(y + 12).toFixed(1)}"
+        text-anchor="middle" font-size="8" fill="rgba(255,255,255,.7)">${Math.round(w.km)}</text>`;
+    }
+  });
+
+  // Chronic average lijn (van week 3 t/m 7)
+  let chronicPath = '';
+  const chronicWeeks = weeks.filter(w => w.chronic != null);
+  if (chronicWeeks.length >= 2) {
+    const pts = chronicWeeks.map((w, ii) => {
+      const origIdx = weeks.indexOf(w);
+      const cx = PAD_L + origIdx * barSpacing + barSpacing / 2;
+      const cy = yScale(w.chronic);
+      return `${cx.toFixed(1)},${cy.toFixed(1)}`;
+    });
+    chronicPath = `<polyline points="${pts.join(' ')}" fill="none" stroke="rgba(100,140,255,.5)" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+    // Label
+    const lastC = chronicWeeks[chronicWeeks.length - 1];
+    const lcIdx = weeks.indexOf(lastC);
+    const lcX = PAD_L + lcIdx * barSpacing + barSpacing / 2;
+    const lcY = yScale(lastC.chronic);
+    chronicPath += `<text x="${(lcX + 4).toFixed(1)}" y="${(lcY - 2).toFixed(1)}" font-size="7.5" fill="rgba(100,140,255,.8)">gem</text>`;
+  }
+
+  // Y-as labels
+  const yLabels = [0, Math.round(maxKm / 2), Math.round(maxKm)].map(v =>
+    `<text x="${PAD_L - 4}" y="${yScale(v).toFixed(1)}" text-anchor="end" font-size="8" fill="var(--muted)" dominant-baseline="middle">${v}</text>`
+  ).join('');
+
+  // "Datum" header voor bars
+  const headerLabel = `<text x="${(PAD_L + chartW / 2).toFixed(1)}" y="${(H - 17).toFixed(1)}"
+    text-anchor="middle" font-size="7.5" fill="var(--muted)">ma v/d week (km | ACWR)</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;overflow:visible">
+    ${yLabels}
+    <line x1="${PAD_L}" y1="${PAD_T + chartH}" x2="${W - PAD_R}" y2="${PAD_T + chartH}" stroke="var(--border2)" stroke-width="1"/>
+    ${bars}
+    ${chronicPath}
+  </svg>`;
+}
+
+/* ═══════════════════════════════════════════
    ANALYSE TAB RENDERER
 ═══════════════════════════════════════════ */
 function renderAnalyseTab() {
   const el = document.getElementById('analyse-content');
   if (!el) return;
 
-  const acts = (intervalsCtx?.activities || [])
+  const rawActs = intervalsCtx?.activities || [];
+  const acts = rawActs
     .map(cleanActivity)
     .filter(a => a.type && a.datum)
     .sort((a, b) => (b.datum || '').localeCompare(a.datum || ''))
     .slice(0, 10);
 
   let html = '';
+
+  // ACWR sectie
+  const acwrData = computeWeeklyACWR(rawActs);
+  const cur = acwrData.current;
+  const zone = acwrZone(cur?.acwr);
+  html += `<div class="planning-section-title" style="margin-bottom:10px">Trainingsbelasting (ACWR)</div>`;
+  html += `<div class="card" style="margin-bottom:16px;padding:14px 16px">`;
+  // Huidige ACWR groot + uitleg
+  html += `<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:14px">`;
+  html += `<div style="background:${zone.bg};border-radius:10px;padding:12px 16px;text-align:center;min-width:80px">`;
+  html += `<div style="font-size:28px;font-weight:800;color:${zone.kleur};font-variant-numeric:tabular-nums">${cur?.acwr != null ? cur.acwr.toFixed(2) : '—'}</div>`;
+  html += `<div style="font-size:10px;font-weight:700;color:${zone.kleur};letter-spacing:.06em;text-transform:uppercase;margin-top:2px">${zone.label}</div>`;
+  html += `</div>`;
+  html += `<div style="flex:1">`;
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">`;
+  html += `<div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Acuut (7d)</div><div style="font-size:17px;font-weight:700">${cur?.km != null ? cur.km.toFixed(0) + ' km' : '—'}</div></div>`;
+  html += `<div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Chronisch (28d gem)</div><div style="font-size:17px;font-weight:700">${cur?.chronic != null ? cur.chronic.toFixed(0) + ' km/w' : '—'}</div></div>`;
+  html += `</div>`;
+  // Zone legenda
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap">`;
+  [['<0.8','var(--accent)','Laag'],['0.8–1.3','var(--success)','Optimaal'],['1.3–1.5','var(--warning)','Voorzichtig'],['>1.5','var(--danger)','Overbelast']].forEach(([range,c,lbl]) =>
+    html += `<span style="font-size:10px;color:${c};background:rgba(0,0,0,.15);border-radius:4px;padding:2px 6px">${range} ${lbl}</span>`
+  );
+  html += `</div>`;
+  html += `</div></div>`;
+  // Chart
+  if (acwrData.weeks.some(w => w.km > 0)) {
+    html += renderACWRChart(acwrData.weeks);
+  }
+  html += `</div>`;
 
   // Recent activities
   html += '<div class="planning-section-title" style="margin-bottom:10px">Recente trainingen</div>';
@@ -2038,7 +2203,10 @@ function renderHomeTab() {
     const ctl = latest.ctl != null ? Math.round(latest.ctl) : null;
     const atl = latest.atl != null ? Math.round(latest.atl) : null;
     const tsb = (ctl != null && atl != null) ? Math.round(ctl - atl) : null;
-    const acwr = (ctl && atl && ctl > 0) ? (atl / ctl).toFixed(2) : null;
+    const homeAcwrCalc = computeWeeklyACWR(intervalsCtx?.activities || []);
+    const acwr = homeAcwrCalc.current?.acwr != null
+      ? homeAcwrCalc.current.acwr.toFixed(2)
+      : (ctl && atl && ctl > 0 ? (atl / ctl).toFixed(2) : null);
     if (ctl != null) document.getElementById('home-ctl').textContent = ctl;
     if (atl != null) document.getElementById('home-atl').textContent = atl;
     if (tsb != null) {
@@ -2049,7 +2217,8 @@ function renderHomeTab() {
     if (acwr != null) {
       const el = document.getElementById('home-acwr');
       el.textContent = acwr;
-      el.className = 'stat-val ' + (parseFloat(acwr) <= 1.3 ? 'good' : parseFloat(acwr) <= 1.5 ? 'warn' : 'crit');
+      const v = parseFloat(acwr);
+      el.className = 'stat-val ' + (v < 0.8 ? '' : v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
     }
   }
 
@@ -2113,8 +2282,14 @@ async function generateHomeInsight() {
   // Build a compact context for the prompt
   const lines = [];
   if (ctl != null) lines.push(`CTL ${ctl} · ATL ${atl} · TSB ${tsb > 0 ? '+' : ''}${tsb}`);
-  const acwr = ctl && atl && ctl > 0 ? (atl / ctl).toFixed(2) : null;
-  if (acwr) lines.push(`ACWR ${acwr}`);
+  const insightAcwr = computeWeeklyACWR(intervalsCtx?.activities || []);
+  const acwr = insightAcwr.current?.acwr != null
+    ? insightAcwr.current.acwr.toFixed(2)
+    : (ctl && atl && ctl > 0 ? (atl / ctl).toFixed(2) : null);
+  if (acwr) {
+    const cur = insightAcwr.current;
+    lines.push(`ACWR ${acwr} (acuut ${cur?.km?.toFixed(0) ?? '?'} km/7d ÷ chronisch ${cur?.chronic?.toFixed(0) ?? '?'} km/w)`);
+  }
   const td = getTodayFromWeekplan();
   if (td?.type) lines.push(`Training vandaag: ${td.type}${td.duur_min ? ' ' + td.duur_min + ' min' : ''}`);
   const flags = (MEM.flags || []).slice(0, 4);

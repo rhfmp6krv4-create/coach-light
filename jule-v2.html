@@ -1593,8 +1593,7 @@ function setStatus(s) {
    MEMORY
 ═══════════════════════════════════════════ */
 async function loadMem() {
-  // Load from v2_ keys, fall back to v1 mem_ keys
-  const [macro, weeks, flags, zones, sa, chatH, voeding, kracht, blessures] = await Promise.all([
+  const [macro, weeks, flags, zones, sa, chatH, voeding, kracht, blessures, sharedPlan] = await Promise.all([
     sbLoad('mem_macroplan'),
     sbLoad('mem_weekplannen'),
     sbLoad('mem_flags'),
@@ -1604,6 +1603,7 @@ async function loadMem() {
     sbLoad('mem_voeding'),
     sbLoad('mem_kracht'),
     sbLoad('mem_blessures'),
+    sbLoad('weekplan_current'),
   ]);
 
   MEM.macroplan = macro || null;
@@ -1614,6 +1614,13 @@ async function loadMem() {
   MEM.kracht = kracht || { sessies: [] };
   MEM.blessures = blessures || [];
   if (sa) stravaAnalysis = sa;
+
+  // Shared current weekplan (written by any app version) — treat as most-recent authoritative plan
+  if (sharedPlan && typeof sharedPlan === 'object') {
+    if (!Array.isArray(MEM.weekplannen)) MEM.weekplannen = [];
+    const alreadyStored = MEM.weekplannen.some(w => JSON.stringify(w.plan || w) === JSON.stringify(sharedPlan));
+    if (!alreadyStored) MEM.weekplannen.unshift(sharedPlan);
+  }
 
   if (chatH?.messages?.length) {
     messages = chatH.messages;
@@ -2806,6 +2813,9 @@ async function parseCoachOutput(text) {
     if (j) {
       try {
         const plan = JSON.parse(j);
+        // Shared key — single overwrite, readable by all app versions
+        await sbSave('weekplan_current', plan);
+        // Keep local history
         const plans = Array.isArray(MEM.weekplannen) ? MEM.weekplannen : [];
         plans.push(plan);
         await saveMem('weekplannen', plans.slice(-10));

@@ -1828,7 +1828,7 @@ async function syncSave(type, content) {
     const res = await fetch(SB_URL + '/rest/v1/coach_light_data?on_conflict=user_key,data_type', {
       method: 'POST',
       headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ user_key: getUserKey(), data_type: type, content: content, updated_at: new Date().toISOString() })
+      body: JSON.stringify({ user_key: getUserKey(), data_type: type, content: JSON.stringify(content), updated_at: new Date().toISOString() })
     });
     if (!res.ok) {
       const errText = await res.text();
@@ -1842,7 +1842,9 @@ async function syncLoadAll() {
     const r = await fetch(SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + getUserKey() + '&select=data_type,content', { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } });
     const rows = await r.json();
     const out = {};
-    for (const row of rows) out[row.data_type] = row.content;
+    for (const row of rows) {
+      try { out[row.data_type] = JSON.parse(row.content); } catch { out[row.data_type] = row.content; }
+    }
     return out;
   } catch(e) { return null; }
 }
@@ -1869,6 +1871,15 @@ async function loadMem() {
       syncSave('profile', CONFIG);
     }
     ['macroplan','weekplannen','checkins','flags','zones'].forEach(t => { if (cloud['mem_' + t]) MEM[t] = cloud['mem_' + t]; });
+    // Shared current weekplan (written by any app version) — prepend as most-recent
+    if (cloud.weekplan_current) {
+      const shared = cloud.weekplan_current;
+      const wrapped = shared.datum !== undefined ? shared : { datum: 'gedeeld', plan: shared };
+      if (!Array.isArray(MEM.weekplannen)) MEM.weekplannen = [];
+      // Only add if not already in history (avoid duplicates)
+      const alreadyStored = MEM.weekplannen.some(w => JSON.stringify(w.plan || w) === JSON.stringify(wrapped.plan || wrapped));
+      if (!alreadyStored) MEM.weekplannen.unshift(wrapped);
+    }
     if (cloud.chat_history?.messages?.length) {
       messages = cloud.chat_history.messages;
       messages.forEach(m => addMessage(m.role, m.content));
@@ -1936,8 +1947,12 @@ function parseCoachOutput(text) {
     const j = extractJsonBlock(text, 'WEEKPLAN_JSON:');
     if (j) {
       try {
+        const plan = JSON.parse(j);
+        // Shared key — single overwrite, readable by all app versions
+        syncSave('weekplan_current', plan);
+        // Keep local history too
         const plannen = MEM.weekplannen || [];
-        plannen.push({ datum: new Date().toISOString().split('T')[0], plan: JSON.parse(j) });
+        plannen.push({ datum: new Date().toISOString().split('T')[0], plan });
         saveMem('weekplannen', plannen.slice(-12));
       } catch(e) { console.warn('weekplan parse error:', e); }
     }

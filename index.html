@@ -275,6 +275,50 @@ body {
 .widget-pill.green { border-color: #bbf7d0; background: #f0fdf4; }
 .widget-pill.amber { border-color: #fde68a; background: #fffbeb; }
 .widget-pill.red { border-color: #fecaca; background: #fef2f2; }
+.widget-pill.clickable { cursor: pointer; transition: box-shadow 0.15s; }
+.widget-pill.clickable:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.widget-pill.clickable.open { border-color: #c2410c; background: #fff7ed; }
+
+/* ACWR chart panel */
+#acwr-panel {
+  display: none;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px;
+  flex-shrink: 0;
+}
+#acwr-panel.open { display: block; }
+.acwr-panel-grid {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.acwr-zone-badge {
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+  min-width: 72px;
+}
+.acwr-zone-badge .val {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.acwr-zone-badge .lbl {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 2px;
+}
+.acwr-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+.acwr-stat-item .lbl { font-size: 9px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin-bottom: 2px; }
+.acwr-stat-item .val { font-family: 'DM Serif Display', serif; font-size: 18px; font-weight: 600; color: var(--ink); }
+.acwr-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.acwr-legend span { font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 4px; }
 .header-left { display: flex; flex-direction: column; }
 .header-title {
   font-family: 'DM Serif Display', serif;
@@ -696,6 +740,34 @@ body {
       <div class="widget-pill-val" id="w-training-val">—</div>
       <div class="widget-pill-sub" id="w-training-sub"></div>
     </div>
+    <div class="widget-pill clickable" id="w-acwr" onclick="toggleAcwrPanel()">
+      <div class="widget-pill-label">ACWR</div>
+      <div class="widget-pill-val" id="w-acwr-val">—</div>
+      <div class="widget-pill-sub" id="w-acwr-sub">belasting</div>
+    </div>
+  </div>
+
+  <!-- ACWR uitklapbaar chart panel -->
+  <div id="acwr-panel">
+    <div class="acwr-panel-grid">
+      <div class="acwr-zone-badge" id="acwr-badge">
+        <div class="val" id="acwr-big">—</div>
+        <div class="lbl" id="acwr-label">—</div>
+      </div>
+      <div>
+        <div class="acwr-stats">
+          <div class="acwr-stat-item"><div class="lbl">Acuut (7d)</div><div class="val" id="acwr-acute">—</div></div>
+          <div class="acwr-stat-item"><div class="lbl">Chronisch (28d gem)</div><div class="val" id="acwr-chronic">—</div></div>
+        </div>
+        <div class="acwr-legend">
+          <span style="background:#fef2f2;color:#b91c1c">&lt;0.8 Laag</span>
+          <span style="background:#f0fdf4;color:#15803d">0.8–1.3 Optimaal</span>
+          <span style="background:#fffbeb;color:#92400e">1.3–1.5 Let op</span>
+          <span style="background:#fef2f2;color:#b91c1c">&gt;1.5 Overbelast</span>
+        </div>
+      </div>
+    </div>
+    <div id="acwr-chart-wrap"></div>
   </div>
 
   <div class="messages" id="messages">
@@ -975,6 +1047,137 @@ function dagVanDatum(str) {
 }
 
 // Bouw een schone, vaste set velden per activiteit — zelfde principe als de
+/* ── ACWR BEREKENING ── */
+function computeWeeklyACWR(rawActivities) {
+  const today = new Date();
+  const kmByDate = {};
+  (rawActivities || []).forEach(a => {
+    if (!a.start_date_local) return;
+    const km = (a.distance || 0) / 1000;
+    if (km < 0.1) return;
+    const d = a.start_date_local.split('T')[0];
+    kmByDate[d] = (kmByDate[d] || 0) + km;
+  });
+  const allDays = [];
+  for (let i = 55; i >= 0; i--) {
+    const dt = new Date(today);
+    dt.setDate(dt.getDate() - i);
+    const iso = dt.toISOString().slice(0, 10);
+    allDays.push({ iso, km: Math.round((kmByDate[iso] || 0) * 10) / 10 });
+  }
+  const weeks = [];
+  for (let w = 0; w < 8; w++) {
+    const endIdx = 55 - w * 7;
+    const startIdx = Math.max(0, endIdx - 6);
+    const slice = allDays.slice(startIdx, endIdx + 1);
+    const km = Math.round(slice.reduce((s, d) => s + d.km, 0) * 10) / 10;
+    weeks.unshift({ iso: allDays[endIdx]?.iso, km, weekIdx: 7 - w });
+  }
+  weeks.forEach((w, i) => {
+    if (i < 3) { w.acwr = null; return; }
+    const chronic = (weeks[i].km + weeks[i-1].km + weeks[i-2].km + weeks[i-3].km) / 4;
+    w.chronic = Math.round(chronic * 10) / 10;
+    w.acwr = chronic > 0 ? Math.round((w.km / chronic) * 100) / 100 : null;
+  });
+  return { weeks, current: weeks[7] };
+}
+
+function acwrZoneRob(v) {
+  if (v == null) return { color: 'var(--ink-3)', label: '—', bg: 'var(--sand)', border: 'var(--border)' };
+  if (v < 0.8)   return { color: '#1d4ed8', label: 'Laag', bg: '#eff6ff', border: '#bfdbfe' };
+  if (v <= 1.3)  return { color: '#15803d', label: 'Optimaal', bg: '#f0fdf4', border: '#bbf7d0' };
+  if (v <= 1.5)  return { color: '#92400e', label: 'Let op', bg: '#fffbeb', border: '#fde68a' };
+  return { color: '#b91c1c', label: 'Overbelast', bg: '#fef2f2', border: '#fecaca' };
+}
+
+function renderAcwrChartRob(weeks) {
+  const maxKm = Math.max(...weeks.map(w => w.km), 1);
+  const W = 380, H = 140, PL = 32, PB = 30, PT = 14, PR = 8;
+  const cW = W - PL - PR, cH = H - PT - PB;
+  const barW = Math.floor(cW / weeks.length) - 4;
+  const bSp = cW / weeks.length;
+  const yS = v => PT + cH - (v / maxKm) * cH;
+
+  let bars = '', chronic = '';
+  weeks.forEach((w, i) => {
+    const x = PL + i * bSp + (bSp - barW) / 2;
+    const bH = (w.km / maxKm) * cH;
+    const y = PT + cH - bH;
+    const z = acwrZoneRob(w.acwr);
+    const fill = w.km > 0 ? z.color : '#e5e7eb';
+    const isLast = i === weeks.length - 1;
+
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${Math.max(bH, 2).toFixed(1)}" rx="3"
+      fill="${fill}" opacity="${isLast ? '1' : '0.45'}"/>`;
+    if (w.acwr != null && w.km > 0)
+      bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-3).toFixed(1)}" text-anchor="middle" font-size="8"
+        fill="${z.color}" font-weight="${isLast?'700':'400'}" font-family="DM Mono,monospace">${w.acwr.toFixed(2)}</text>`;
+    if (bH > 18 && w.km > 0)
+      bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y+12).toFixed(1)}" text-anchor="middle" font-size="8"
+        fill="rgba(255,255,255,.85)" font-family="DM Mono,monospace">${Math.round(w.km)}</text>`;
+    const lbl = w.iso ? parseInt(w.iso.split('-')[2]) + '' : '';
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(H-6).toFixed(1)}" text-anchor="middle" font-size="8.5"
+      fill="${isLast ? '#1c1917' : '#a8a29e'}" font-family="DM Mono,monospace">${lbl}</text>`;
+  });
+
+  const cWeeks = weeks.filter(w => w.chronic != null);
+  if (cWeeks.length >= 2) {
+    const pts = cWeeks.map(w => {
+      const oi = weeks.indexOf(w);
+      return `${(PL + oi * bSp + bSp/2).toFixed(1)},${yS(w.chronic).toFixed(1)}`;
+    });
+    chronic = `<polyline points="${pts.join(' ')}" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-dasharray="5,3" opacity=".6"/>`;
+    const lc = cWeeks[cWeeks.length-1];
+    const lci = weeks.indexOf(lc);
+    chronic += `<text x="${(PL+lci*bSp+bSp/2+4).toFixed(1)}" y="${(yS(lc.chronic)-2).toFixed(1)}" font-size="8" fill="#c2410c" opacity=".7" font-family="DM Mono,monospace">gem</text>`;
+  }
+
+  const yLbls = [0, Math.round(maxKm/2), Math.round(maxKm)].map(v =>
+    `<text x="${PL-4}" y="${yS(v).toFixed(1)}" text-anchor="end" font-size="8" fill="#a8a29e" dominant-baseline="middle" font-family="DM Mono,monospace">${v}</text>`
+  ).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;overflow:visible">
+    ${yLbls}
+    <line x1="${PL}" y1="${PT+cH}" x2="${W-PR}" y2="${PT+cH}" stroke="#e2d9cc" stroke-width="1"/>
+    ${bars}${chronic}
+  </svg>`;
+}
+
+function toggleAcwrPanel() {
+  const panel = document.getElementById('acwr-panel');
+  const pill = document.getElementById('w-acwr');
+  const isOpen = panel.classList.toggle('open');
+  pill.classList.toggle('open', isOpen);
+}
+
+function updateAcwrWidget() {
+  const data = computeWeeklyACWR(intervalsCtx?.activities || []);
+  const cur = data.current;
+  const z = acwrZoneRob(cur?.acwr);
+
+  // Pill
+  const pill = document.getElementById('w-acwr');
+  if (cur?.acwr != null) {
+    document.getElementById('w-acwr-val').textContent = cur.acwr.toFixed(2);
+    document.getElementById('w-acwr-sub').textContent = z.label;
+    pill.className = 'widget-pill clickable ' + (cur.acwr <= 1.3 ? (cur.acwr < 0.8 ? '' : 'green') : cur.acwr <= 1.5 ? 'amber' : 'red');
+  }
+
+  // Panel
+  document.getElementById('acwr-big').textContent = cur?.acwr != null ? cur.acwr.toFixed(2) : '—';
+  document.getElementById('acwr-label').textContent = z.label;
+  const badge = document.getElementById('acwr-badge');
+  badge.style.background = z.bg;
+  badge.style.border = `1px solid ${z.border}`;
+  badge.querySelector('.val').style.color = z.color;
+  badge.querySelector('.lbl').style.color = z.color;
+  document.getElementById('acwr-acute').textContent = cur?.km != null ? cur.km.toFixed(0) + ' km' : '—';
+  document.getElementById('acwr-chronic').textContent = cur?.chronic != null ? cur.chronic.toFixed(0) + ' km/w' : '—';
+  if (data.weeks.some(w => w.km > 0)) {
+    document.getElementById('acwr-chart-wrap').innerHTML = renderAcwrChartRob(data.weeks);
+  }
+}
+
 // 'trainingen'-array die Coach Rob via coach-context krijgt: simpele namen,
 // leesbare eenheden (km, minuten), geen geneste lap/interval-structuren die
 // het tekenbudget opslokken.
@@ -1552,6 +1755,9 @@ function updateWidgets() {
     document.getElementById('w-training-val').textContent = 'Rust';
     document.getElementById('w-training-sub').textContent = 'geen activiteit';
   }
+
+  // ACWR
+  updateAcwrWidget();
 }
 
 // ── CHECK EXISTING PROFILE ──

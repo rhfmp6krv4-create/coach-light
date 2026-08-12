@@ -1619,7 +1619,7 @@ async function loadMem() {
   if (sharedPlan && typeof sharedPlan === 'object') {
     if (!Array.isArray(MEM.weekplannen)) MEM.weekplannen = [];
     const alreadyStored = MEM.weekplannen.some(w => JSON.stringify(w.plan || w) === JSON.stringify(sharedPlan));
-    if (!alreadyStored) MEM.weekplannen.unshift(sharedPlan);
+    if (!alreadyStored) MEM.weekplannen.push(sharedPlan); // push = most recent, picked by getBestWeekplan default
   }
 
   if (chatH?.messages?.length) {
@@ -2441,6 +2441,8 @@ function renderWeekplan(week) {
 
   // Sort by day-of-week order (always use named order, ignore potentially wrong ISO dates)
   dagEntries.sort((a, b) => dagVolgorde.indexOf(a.dagNaam) - dagVolgorde.indexOf(b.dagNaam));
+  // Deduplicate: keep first occurrence of each day name (AI sometimes emits duplicate keys)
+  dagEntries = dagEntries.filter((e, i, arr) => arr.findIndex(x => x.dagNaam === e.dagNaam) === i);
 
   // Derive correct dates purely from day names + current week's Monday.
   // AI-embedded dates are unreliable (coach date-drift), so we ALWAYS anchor to

@@ -1878,7 +1878,7 @@ async function loadMem() {
       if (!Array.isArray(MEM.weekplannen)) MEM.weekplannen = [];
       // Only add if not already in history (avoid duplicates)
       const alreadyStored = MEM.weekplannen.some(w => JSON.stringify(w.plan || w) === JSON.stringify(wrapped.plan || wrapped));
-      if (!alreadyStored) MEM.weekplannen.unshift(wrapped);
+      if (!alreadyStored) MEM.weekplannen.push(wrapped); // push = most recent, picked by slice(-3)
     }
     if (cloud.chat_history?.messages?.length) {
       messages = cloud.chat_history.messages;

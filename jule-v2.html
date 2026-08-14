@@ -1178,6 +1178,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
       <!-- ANALYSE TAB -->
       <div id="tab-analyse" class="tab-content">
         <div id="analyse-scroll" style="overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px">
+          <div id="strava-status-card" style="display:none;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:12px 14px;margin-bottom:12px"></div>
           <div id="analyse-content"><div style="padding:40px 0;text-align:center;color:var(--text2);font-size:13px">Trainingsdata laden…</div></div>
           <div style="padding:16px 0 0">
             <button class="btn btn-secondary btn-full" onclick="quickSend('Analyseer mijn laatste training in detail: zones gerealiseerd, hartslag, tempo, TSS. Wat ging goed, wat kan beter, en wat betekent dit voor de komende week?');switchTab('chat')">
@@ -1582,6 +1583,8 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let CONFIG = {};
 let intervalsCtx = null;
 let stravaAnalysis = null;
+let stravaCtx = null; // null | { connected: true, athlete_name: string }
+const STRAVA_CLIENT_ID = '260913';
 let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [], zones: null, voeding: null, kracht: null, blessures: null };
 let ciScore = 0;
 let messages = [];
@@ -3670,6 +3673,123 @@ async function submitCheckin() {
 }
 
 /* ═══════════════════════════════════════════
+   STRAVA
+═══════════════════════════════════════════ */
+async function checkStravaConnection() {
+  if (!CONFIG.intervalsId) return;
+  try {
+    const r = await fetch(
+      SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(CONFIG.intervalsId) + '&data_type=eq.strava_tokens&select=content',
+      { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    if (rows.length > 0) {
+      stravaCtx = { connected: true, athlete_name: rows[0].content?.athlete_name || 'Strava' };
+      updateStravaStatus();
+      // Auto-refresh als data ouder is dan 7 dagen of ontbreekt
+      const isStale = !stravaAnalysis || !stravaAnalysis.datum ||
+        (new Date() - new Date(stravaAnalysis.datum)) > 7 * 86400000;
+      if (isStale) {
+        refreshStravaAnalysis(false); // achtergrond, geen feedback
+      }
+    } else {
+      updateStravaStatus();
+    }
+  } catch(e) { updateStravaStatus(); }
+}
+
+async function refreshStravaAnalysis(showFeedback = true) {
+  const btn = document.getElementById('strava-refresh-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Laden…'; }
+  try {
+    const res = await fetch(
+      SB_URL + '/functions/v1/analyze-activity-light?user_key=' + encodeURIComponent(CONFIG.intervalsId),
+      { headers: { 'Authorization': 'Bearer ' + SB_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const analyse = await res.json();
+    if (!analyse.error) {
+      const datum = analyse.start_date?.split('T')[0] || new Date().toISOString().split('T')[0];
+      const naam = analyse.activity_name || 'training';
+      stravaAnalysis = { datum, naam, data: analyse };
+      await sbSave('strava_analysis', stravaAnalysis);
+      updateStravaStatus();
+      renderAnalyseTab();
+      if (showFeedback) addMessage('assistant', '✅ Strava analyse vernieuwd — ' + naam + ' (' + datum + ')');
+    } else {
+      if (showFeedback) addMessage('assistant', '❌ Strava analyse: ' + (analyse.error || 'onbekende fout'));
+    }
+  } catch(e) {
+    if (showFeedback) addMessage('assistant', '❌ Strava analyse mislukt: ' + e.message);
+  } finally {
+    updateStravaStatus();
+  }
+}
+
+function connectStrava() {
+  const redirectUri = window.location.href.split('?')[0].split('#')[0];
+  window.location.href = 'https://www.strava.com/oauth/authorize'
+    + '?client_id=' + STRAVA_CLIENT_ID
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&response_type=code'
+    + '&scope=activity:read_all'
+    + '&approval_prompt=force';
+}
+
+async function handleStravaCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  window.history.replaceState({}, '', window.location.pathname);
+  if (!code) return;
+  try {
+    const redirectUri = window.location.href.split('?')[0].split('#')[0];
+    const res = await fetch(SB_URL + '/functions/v1/strava-oauth-light', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
+      body: JSON.stringify({ code, user_key: CONFIG.intervalsId, redirect_uri: redirectUri })
+    });
+    const data = await res.json();
+    if (data.success) {
+      stravaCtx = { connected: true, athlete_name: data.athlete_name || 'Strava' };
+      updateStravaStatus();
+      addMessage('assistant', '✅ Strava gekoppeld als ' + (data.athlete_name || 'atleet') + '! Analyse wordt opgehaald…');
+      refreshStravaAnalysis(true);
+    } else {
+      addMessage('assistant', '❌ Strava koppelen mislukt: ' + (data.error || 'onbekende fout'));
+    }
+  } catch(e) {
+    addMessage('assistant', '❌ Strava koppelen mislukt: ' + e.message);
+  }
+}
+
+function updateStravaStatus() {
+  const el = document.getElementById('strava-status-card');
+  if (!el) return;
+  const btn = document.getElementById('strava-refresh-btn');
+  if (stravaCtx?.connected) {
+    const datum = stravaAnalysis?.datum || '—';
+    const naam = stravaAnalysis?.naam || '';
+    el.style.display = 'block';
+    el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--success)">Strava gekoppeld</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${naam ? escapeHtml(naam) + ' · ' : ''}${escapeHtml(datum)}</div>
+      </div>
+      <button id="strava-refresh-btn" onclick="refreshStravaAnalysis(true);switchTab('chat')" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:7px 14px;font-size:12px;font-family:var(--font);cursor:pointer">Vernieuwen</button>
+    </div>`;
+  } else {
+    el.style.display = 'block';
+    el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Strava niet gekoppeld</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Koppel voor pace/HR streamanalyse</div>
+      </div>
+      <button onclick="connectStrava()" style="background:var(--grad);border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer">Strava koppelen</button>
+    </div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════ */
 async function init() {
@@ -3708,6 +3828,13 @@ async function init() {
   renderPlanningTab();
   renderAnalyseTab();
   renderStatusTab();
+
+  // Strava: handle OAuth callback or check existing connection
+  if (new URLSearchParams(window.location.search).has('code')) {
+    await handleStravaCallback();
+  } else {
+    checkStravaConnection(); // non-blocking: auto-refreshes if stale
+  }
 }
 
 // Wire up input events

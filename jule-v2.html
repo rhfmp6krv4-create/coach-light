@@ -975,7 +975,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
 #no-config { display: none; }
 </style>
 </head>
-<body>
+<body class="tab-home">
 
 <!-- No config screen -->
 <div id="no-config" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:32px;gap:16px">
@@ -1051,7 +1051,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
       <span id="sidebar-race" style="display:none"></span>
 
       <div class="sidebar-tabs">
-        <button class="sidebar-tab" data-tab="home" onclick="switchTab('home')">
+        <button class="sidebar-tab active" data-tab="home" onclick="switchTab('home')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Home
         </button>
@@ -1083,7 +1083,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
           Materiaal
         </button>
-        <button class="sidebar-tab active" data-tab="chat" onclick="switchTab('chat')">
+        <button class="sidebar-tab" data-tab="chat" onclick="switchTab('chat')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Chat
         </button>
@@ -1095,7 +1095,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
 
       <!-- Desktop tab bar (hidden on desktop — sidebar handles nav) -->
       <div class="tab-bar-desktop">
-        <button class="tab-btn" data-tab="home" onclick="switchTab('home')">Home</button>
+        <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">Home</button>
         <button class="tab-btn" data-tab="analyse" onclick="switchTab('analyse')">Analyse</button>
         <button class="tab-btn" data-tab="planning" onclick="switchTab('planning')">Planning</button>
         <button class="tab-btn" data-tab="status" onclick="switchTab('status')">Status</button>
@@ -1103,11 +1103,11 @@ body.tab-home .sidebar-progress { visibility: hidden; }
         <button class="tab-btn" data-tab="kracht" onclick="switchTab('kracht')">Kracht</button>
         <button class="tab-btn" data-tab="fysio" onclick="switchTab('fysio')">Fysio</button>
         <button class="tab-btn" data-tab="materiaal" onclick="switchTab('materiaal')">Materiaal</button>
-        <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">Chat</button>
+        <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">Chat</button>
       </div>
 
       <!-- HOME TAB -->
-      <div id="tab-home" class="tab-content">
+      <div id="tab-home" class="tab-content active">
         <div class="home-scroll">
 
           <div class="home-hero">
@@ -1184,7 +1184,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
       </div>
 
       <!-- CHAT TAB -->
-      <div id="tab-chat" class="tab-content active">
+      <div id="tab-chat" class="tab-content">
         <div class="coach-quick-row">
           <button class="coach-quick-btn" onclick="quickSend('Check-in: hoe staat mijn herstel ervoor op basis van de data? TSB-trend, CTL, slaap. Wees direct.')">Check-in</button>
           <button class="coach-quick-btn" onclick="quickSend('Geef me een gedetailleerd trainingsplan voor vandaag: opwarm, hoofdwerk met zones en HR-targets, afkoel. Houd rekening met mijn herstelstatus.')">Training vandaag</button>
@@ -1558,7 +1558,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
 
   <!-- Bottom nav (mobile) -->
   <div id="bottom-nav">
-    <button class="btm-tab" data-tab="home" onclick="switchTab('home')">
+    <button class="btm-tab active" data-tab="home" onclick="switchTab('home')">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Home
     </button>
@@ -1574,7 +1574,7 @@ body.tab-home .sidebar-progress { visibility: hidden; }
       <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Status
     </button>
-    <button class="btm-tab active" data-tab="chat" onclick="switchTab('chat')">
+    <button class="btm-tab" data-tab="chat" onclick="switchTab('chat')">
       <div class="chat-fab-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </div>
@@ -1625,7 +1625,7 @@ let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [], zones: nu
 let ciScore = 0;
 let messages = [];
 let isLoading = false;
-let currentTab = 'chat';
+let currentTab = 'home';
 
 /* ═══════════════════════════════════════════
    SUPABASE HELPERS

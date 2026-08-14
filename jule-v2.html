@@ -444,6 +444,8 @@ h3 { font-size: 16px; font-weight: 600; }
   padding: 16px;
   align-content: center;
 }
+/* Home: hide sidebar progress bar — hero section already shows it prominently */
+body.tab-home .sidebar-progress { display: none; }
 
 /* Sidebar progress (sub-pages) */
 .sidebar-progress {
@@ -794,7 +796,7 @@ h3 { font-size: 16px; font-weight: 600; }
   box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 4px 14px rgba(0,0,0,0.3);
 }
 .home-today-card {
-  margin: 0 16px;
+  margin: 8px 16px 0;
 }
 .home-actions {
   padding: 12px 16px 0;
@@ -1150,7 +1152,7 @@ h3 { font-size: 16px; font-weight: 600; }
             <div id="home-week-content" style="display:none;margin-top:12px;border-top:1px solid var(--border2);padding-top:12px"></div>
           </div>
 
-          <div class="card home-insight-card" id="home-insight-card" style="margin-top:0">
+          <div class="card home-insight-card" id="home-insight-card" style="margin:8px 16px 0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Coach inzicht</span>
@@ -2628,8 +2630,8 @@ function renderHomeTab() {
       } else {
         let parts = [];
         if (typeRaw) parts.push('<strong>' + escapeHtml(typeRaw) + '</strong>');
-        if (duur) parts.push(duur + ' min');
-        if (afstand) parts.push(afstand + ' km');
+        if (duur) parts.push(String(duur).replace(/\s*min\s*$/i, '') + ' min');
+        if (afstand) parts.push(String(afstand).replace(/\s*km\s*$/i, '') + ' km');
         if (zones) parts.push(escapeHtml(zones));
         if (tempo) parts.push(escapeHtml(tempo));
         todayEl.innerHTML = parts.join(' · ')

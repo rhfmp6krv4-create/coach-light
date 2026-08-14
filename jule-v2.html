@@ -2454,7 +2454,7 @@ async function fetchAndRenderWeather() {
   if (!card) return;
   try {
     if (!_weatherCache || Date.now() - _weatherCache.ts > 3_600_000) {
-      const lat = 52.5168, lon = 6.0830; // Zwolle
+      const lat = 52.3676, lon = 4.9041; // Amsterdam
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
         `&current=temperature_2m,weathercode,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
         `&timezone=auto&forecast_days=2`;

@@ -433,9 +433,9 @@ h3 { font-size: 16px; font-weight: 600; }
   overflow: hidden;
   box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 6px 24px rgba(0,0,0,0.45);
 }
-/* Sub-pages: tiles fill the same slot, logo hidden */
-body:not(.tab-home) .sidebar-logo-area { display: none; }
-body:not(.tab-home) .sidebar-stats {
+/* Sidebar: stat tiles always visible, logo moved to home hero */
+.sidebar-logo-area { display: none; }
+.sidebar-stats {
   display: grid;
   position: absolute;
   inset: 0;
@@ -444,9 +444,6 @@ body:not(.tab-home) .sidebar-stats {
   padding: 16px;
   align-content: center;
 }
-/* Home: tiles hidden, progress bar hidden (shown large in main content) */
-body.tab-home .sidebar-stats { display: none; }
-body.tab-home .sidebar-progress { visibility: hidden; }
 
 /* Sidebar progress (sub-pages) */
 .sidebar-progress {
@@ -789,14 +786,13 @@ body.tab-home .sidebar-progress { visibility: hidden; }
   font-variant-numeric: tabular-nums;
   margin-right: 4px;
 }
-.home-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 16px;
-}
-@media (max-width: 380px) {
-  .home-stats { grid-template-columns: 1fr 1fr; }
+.home-logo-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 4px 14px rgba(0,0,0,0.3);
 }
 .home-today-card {
   margin: 0 16px;
@@ -1004,17 +1000,10 @@ body.tab-home .sidebar-progress { visibility: hidden; }
 
     <!-- Sidebar (desktop) -->
     <aside id="sidebar">
-      <!-- Fixed-height top slot: logo on Home, stat tiles on sub-pages -->
+      <!-- Fixed-height top slot: stat tiles on all pages -->
       <div class="sidebar-top-slot">
 
-        <!-- Logo (Home tab only) -->
-        <div class="sidebar-logo-area" id="race-logo-wrap">
-          <div class="logo-circle-clip">
-            <img id="race-logo" alt="Race logo" style="width:100%;height:100%;object-fit:cover;display:block">
-          </div>
-        </div>
-
-        <!-- Stat tiles (sub-pages only) -->
+        <!-- Stat tiles (all tabs) -->
         <div class="sidebar-stats">
           <div class="stat-card">
             <div class="stat-val" id="stat-ctl">—</div>
@@ -1111,32 +1100,20 @@ body.tab-home .sidebar-progress { visibility: hidden; }
         <div class="home-scroll">
 
           <div class="home-hero">
-            <div class="home-hero-greeting" id="home-greeting">Welkom, Jule.</div>
-            <div class="home-hero-race" id="home-race-label">Amsterdam Marathon</div>
-            <div class="home-hero-countdown">
-              <strong id="home-countdown">—</strong> dagen te gaan
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <div style="flex:1;min-width:0">
+                <div class="home-hero-greeting" id="home-greeting">Welkom, Jule.</div>
+                <div class="home-hero-race" id="home-race-label">Amsterdam Marathon</div>
+                <div class="home-hero-countdown">
+                  <strong id="home-countdown">—</strong> dagen te gaan
+                </div>
+              </div>
+              <div id="race-logo-wrap" class="home-logo-wrap">
+                <img id="race-logo" alt="Race logo" style="width:100%;height:100%;object-fit:cover;display:block">
+              </div>
             </div>
             <div class="journey-bar-track" style="margin-top:14px">
               <div class="journey-bar-fill" id="home-journey-fill" style="width:0%"></div>
-            </div>
-          </div>
-
-          <div class="home-stats">
-            <div class="stat-card">
-              <div class="stat-val" id="home-ctl">—</div>
-              <div class="stat-lbl">CTL</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-val" id="home-atl">—</div>
-              <div class="stat-lbl">ATL</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-val" id="home-tsb">—</div>
-              <div class="stat-lbl">TSB</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-val" id="home-acwr">—</div>
-              <div class="stat-lbl">ACWR</div>
             </div>
           </div>
 
@@ -1653,7 +1630,7 @@ async function sbLoad(dataType) {
   try {
     const r = await fetch(
       SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(CONFIG.intervalsId) +
-      '&data_type=eq.' + encodeURIComponent(dataType) + '&select=content',
+      '&data_type=eq.' + encodeURIComponent(dataType) + '&select=content&order=id.desc&limit=1',
       { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
     );
     const rows = r.ok ? await r.json() : [];
@@ -2546,15 +2523,15 @@ function renderHomeTab() {
     const acwr = homeAcwrCalc.current?.acwr != null
       ? homeAcwrCalc.current.acwr.toFixed(2)
       : (ctl && atl && ctl > 0 ? (atl / ctl).toFixed(2) : null);
-    if (ctl != null) document.getElementById('home-ctl').textContent = ctl;
-    if (atl != null) document.getElementById('home-atl').textContent = atl;
+    if (ctl != null) document.getElementById('stat-ctl').textContent = ctl;
+    if (atl != null) document.getElementById('stat-atl').textContent = atl;
     if (tsb != null) {
-      const el = document.getElementById('home-tsb');
+      const el = document.getElementById('stat-tsb');
       el.textContent = (tsb > 0 ? '+' : '') + tsb;
       el.className = 'stat-val ' + (tsb > 5 ? 'good' : tsb < -10 ? 'crit' : tsb < -5 ? 'warn' : '');
     }
     if (acwr != null) {
-      const el = document.getElementById('home-acwr');
+      const el = document.getElementById('stat-acwr');
       el.textContent = acwr;
       const v = parseFloat(acwr);
       el.className = 'stat-val ' + (v < 0.8 ? '' : v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
@@ -3118,6 +3095,7 @@ async function submitMessage() {
 
   messages.push({ role: 'user', content: text });
   addMessage('user', text);
+  sbSave('chat_history', { messages: messages.slice(-60) }); // save user msg immediately
   addTyping();
 
   // Refresh intervals data on each message
@@ -3641,8 +3619,31 @@ function renderFysioTab() {
    MATERIAAL TAB
 ═══════════════════════════════════════════ */
 let _gearData = null;
+let _stravaAccessToken = null;
 
 async function fetchGear() {
+  // Try Strava first — has full shoe data with brand/model/distance
+  if (_stravaAccessToken) {
+    try {
+      const r = await fetch('https://www.strava.com/api/v3/athlete', {
+        headers: { 'Authorization': 'Bearer ' + _stravaAccessToken }
+      });
+      if (r.ok) {
+        const athlete = await r.json();
+        const shoes = (athlete.shoes || []).map(s => ({
+          name: s.name || s.model_name || 'Onbekend',
+          distance: s.distance || 0, // meters
+          retired: false,
+          brand_name: s.brand_name || '',
+          model_name: s.model_name || '',
+          source: 'strava'
+        }));
+        if (shoes.length) return shoes;
+      }
+    } catch(e) {}
+  }
+
+  // Fallback: Intervals.icu gear endpoint
   if (!CONFIG.intervalsId || !CONFIG.intervalsKey) return null;
   try {
     const auth = btoa('API_KEY:' + CONFIG.intervalsKey);
@@ -3975,7 +3976,9 @@ async function checkStravaConnection() {
     );
     const rows = r.ok ? await r.json() : [];
     if (rows.length > 0) {
-      stravaCtx = { connected: true, athlete_name: rows[0].content?.athlete_name || 'Strava' };
+      const tok = rows[0].content;
+      _stravaAccessToken = tok?.access_token || null;
+      stravaCtx = { connected: true, athlete_name: tok?.athlete_name || 'Strava' };
       updateStravaStatus();
       // Auto-refresh als data ouder is dan 7 dagen of ontbreekt
       const isStale = !stravaAnalysis || !stravaAnalysis.datum ||
@@ -4111,21 +4114,21 @@ async function init() {
     fetchIntervalsData(),
   ]);
 
-  // Pre-fetch gear in background (non-blocking)
-  fetchGear().then(g => { if (g) _gearData = g; });
-
   // Render all tabs with loaded data
   renderHomeTab();
   renderPlanningTab();
   renderAnalyseTab();
   renderStatusTab();
 
-  // Strava: handle OAuth callback or check existing connection
+  // Strava: handle OAuth callback or check existing connection (awaited so token is set before fetchGear)
   if (new URLSearchParams(window.location.search).has('code')) {
     await handleStravaCallback();
   } else {
-    checkStravaConnection(); // non-blocking: auto-refreshes if stale
+    await checkStravaConnection();
   }
+
+  // Fetch gear after Strava token is available (so Strava shoes are used if connected)
+  fetchGear().then(g => { if (g) _gearData = g; });
 }
 
 // Wire up input events

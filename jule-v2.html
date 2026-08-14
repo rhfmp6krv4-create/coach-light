@@ -924,6 +924,28 @@ body.tab-home .sidebar-progress { visibility: hidden; }
   justify-content: space-between; display: none;
 }
 
+/* ─── WEER WIDGET ─── */
+.home-weather {
+  margin: 8px 16px 0; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); display: none;
+  align-items: center; justify-content: space-between; gap: 12px;
+}
+.home-weather .wk-icon { font-size: 28px; line-height: 1; }
+.home-weather .wk-temp { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.home-weather .wk-desc { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.home-weather .wk-tom { font-size: 11px; color: var(--muted); text-align: right; line-height: 1.5; }
+/* ─── VANDAAG VOLTOOID ─── */
+.home-done-card {
+  margin: 8px 16px 0; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); display: none;
+}
+/* ─── SPARKLINES ─── */
+.sparkline-wrap { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+.sparkline-item { flex: 1; min-width: 110px; }
+.sparkline-lbl { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+.sparkline-val { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
 /* ─── MATERIAAL ─── */
 .materiaal-scroll { overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px }
 .schoen-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden }
@@ -1116,6 +1138,20 @@ body.tab-home .sidebar-progress { visibility: hidden; }
               <div class="stat-val" id="home-acwr">—</div>
               <div class="stat-lbl">ACWR</div>
             </div>
+          </div>
+
+          <div class="home-weather" id="home-weather">
+            <div class="wk-icon" id="wk-icon">🌤</div>
+            <div style="flex:1">
+              <div class="wk-temp" id="wk-temp">—</div>
+              <div class="wk-desc" id="wk-desc">Weer laden…</div>
+            </div>
+            <div class="wk-tom" id="wk-tom"></div>
+          </div>
+
+          <div class="home-done-card" id="home-done-card">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--success);margin-bottom:6px">✓ Vandaag voltooid</div>
+            <div id="home-done-content" style="font-size:13px;color:var(--text);line-height:1.5"></div>
           </div>
 
           <div class="home-pot-card" id="home-pot-card">
@@ -2002,6 +2038,120 @@ function renderACWRChart(weeks) {
   </svg>`;
 }
 
+/* ─── SPARKLINE HELPER ─── */
+function makeSvgSparkline(vals, color, w = 120, h = 28) {
+  const clean = vals.filter(v => v != null);
+  if (clean.length < 2) return '';
+  const mn = Math.min(...clean), mx = Math.max(...clean);
+  const range = mx - mn || 1;
+  const pts = vals.map((v, i) => {
+    if (v == null) return null;
+    const x = (i / (vals.length - 1)) * w;
+    const y = h - 2 - ((v - mn) / range) * (h - 4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).filter(Boolean).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px;display:block">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function renderStatusSparklines(wellness) {
+  const last14 = wellness.slice(-14);
+  if (last14.length < 3) return '';
+  const hrVals = last14.map(w => w.rust_hr);
+  const sleepVals = last14.map(w => w.slaap_uren);
+  const vo2Vals = last14.map(w => w.vo2max);
+  const hrClean = hrVals.filter(Boolean);
+  const sleepClean = sleepVals.filter(Boolean);
+  const vo2Clean = vo2Vals.filter(Boolean);
+  let out = '<div class="sparkline-wrap">';
+  if (hrClean.length >= 3) {
+    const avg = Math.round(hrClean.reduce((s,v) => s+v, 0) / hrClean.length);
+    out += `<div class="sparkline-item">
+      <div class="sparkline-lbl">Rust-HR (14d)</div>
+      <div class="sparkline-val" style="color:var(--danger)">${hrClean[hrClean.length-1]} <span style="font-size:10px;font-weight:400;color:var(--muted)">gem ${avg}</span></div>
+      ${makeSvgSparkline(hrVals, 'var(--danger)')}
+    </div>`;
+  }
+  if (sleepClean.length >= 3) {
+    const avg = (sleepClean.reduce((s,v) => s+v, 0) / sleepClean.length).toFixed(1);
+    out += `<div class="sparkline-item">
+      <div class="sparkline-lbl">Slaap (14d)</div>
+      <div class="sparkline-val" style="color:var(--cyan)">${sleepClean[sleepClean.length-1]}u <span style="font-size:10px;font-weight:400;color:var(--muted)">gem ${avg}u</span></div>
+      ${makeSvgSparkline(sleepVals, 'var(--cyan)')}
+    </div>`;
+  }
+  if (vo2Clean.length >= 3) {
+    out += `<div class="sparkline-item">
+      <div class="sparkline-lbl">VO₂max (14d)</div>
+      <div class="sparkline-val" style="color:var(--success)">${vo2Clean[vo2Clean.length-1]}</div>
+      ${makeSvgSparkline(vo2Vals, 'var(--success)')}
+    </div>`;
+  }
+  out += '</div>';
+  return out === '<div class="sparkline-wrap"></div>' ? '' : out;
+}
+
+/* ─── LONG RUN PROGRESSION CHART ─── */
+function renderLongRunChart(rawActs) {
+  const runs = rawActs.filter(a => a.type === 'Run' && a.distance > 0);
+  if (!runs.length) return '';
+  const today = new Date();
+  const weeks = [];
+  for (let i = 7; i >= 0; i--) {
+    const mon = new Date(today);
+    mon.setDate(today.getDate() - ((today.getDay() + 6) % 7) - 7 * i);
+    mon.setHours(0, 0, 0, 0);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 7);
+    const weekRuns = runs.filter(a => {
+      const d = new Date(a.start_date_local || a.date || a.id);
+      return d >= mon && d < sun;
+    });
+    const longest = weekRuns.length ? Math.max(...weekRuns.map(a => a.distance / 1000)) : 0;
+    weeks.push({
+      label: mon.toLocaleDateString('nl', { month: 'short', day: 'numeric' }),
+      km: parseFloat(longest.toFixed(1))
+    });
+  }
+  if (!weeks.some(w => w.km > 0)) return '';
+
+  const W = 300, H = 90, PAD_L = 26, PAD_T = 8, PAD_B = 22, PAD_R = 6;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+  const maxKm = Math.max(...weeks.map(w => w.km), 5);
+  const barW = chartW / weeks.length;
+  const yScale = v => PAD_T + chartH - (v / maxKm) * chartH;
+
+  let bars = '';
+  weeks.forEach((w, i) => {
+    const x = PAD_L + i * barW + barW * 0.1;
+    const bw = barW * 0.8;
+    const y = yScale(w.km);
+    const barH = chartH - (y - PAD_T);
+    if (w.km > 0) {
+      const isLast = i === weeks.length - 1;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${barH.toFixed(1)}"
+        rx="2" fill="${isLast ? 'var(--accent)' : 'rgba(79,142,247,.4)'}"/>`;
+      if (w.km >= maxKm * 0.15) {
+        bars += `<text x="${(x + bw / 2).toFixed(1)}" y="${(y + 11).toFixed(1)}"
+          text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,.85)">${w.km}</text>`;
+      }
+    }
+    bars += `<text x="${(x + bw / 2).toFixed(1)}" y="${(H - 5).toFixed(1)}"
+      text-anchor="middle" font-size="7" fill="var(--muted)">${w.label.split(' ')[0]}</text>`;
+  });
+
+  const yLabels = [0, Math.round(maxKm / 2), Math.round(maxKm)].map(v =>
+    `<text x="${PAD_L - 3}" y="${yScale(v).toFixed(1)}" text-anchor="end" font-size="7.5" fill="var(--muted)" dominant-baseline="middle">${v}</text>`
+  ).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+    ${yLabels}
+    <line x1="${PAD_L}" y1="${PAD_T + chartH}" x2="${W - PAD_R}" y2="${PAD_T + chartH}" stroke="var(--border2)" stroke-width="1"/>
+    ${bars}
+  </svg>`;
+}
+
 /* ═══════════════════════════════════════════
    ANALYSE TAB RENDERER
 ═══════════════════════════════════════════ */
@@ -2099,6 +2249,31 @@ function renderAnalyseTab() {
     html += `<div style="font-size:11px;color:var(--muted);margin-top:6px">Bron: ${escapeHtml(stravaAnalysis.naam || '')} — ${escapeHtml(stravaAnalysis.datum || '')}</div>`;
   }
 
+  // Long run progression (8 weeks)
+  const longRunSvg = renderLongRunChart(rawActs);
+  if (longRunSvg) {
+    html += '<div class="planning-section-title" style="margin:20px 0 10px">Langste run per week (8w)</div>';
+    html += `<div class="card card-sm" style="padding:12px 10px">${longRunSvg}</div>`;
+  }
+
+  // VO2max trend (from wellness)
+  const wellAll = (intervalsCtx?.wellness || []).map(cleanWellness).filter(w => w.datum && w.vo2max != null).slice(-20);
+  if (wellAll.length >= 3) {
+    const latest = wellAll[wellAll.length - 1];
+    const earliest = wellAll[0];
+    const trend = latest.vo2max - earliest.vo2max;
+    const trendKleur = trend > 0 ? 'var(--success)' : trend < -0.5 ? 'var(--danger)' : 'var(--text2)';
+    const trendSymbol = trend > 0 ? '▲' : trend < -0.5 ? '▼' : '—';
+    html += '<div class="planning-section-title" style="margin:20px 0 10px">VO₂max trend</div>';
+    html += `<div class="card card-sm">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+        <div><div style="font-size:28px;font-weight:800;font-variant-numeric:tabular-nums">${latest.vo2max}</div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">ml/kg/min</div></div>
+        <div><div style="font-size:13px;font-weight:600;color:${trendKleur}">${trendSymbol} ${Math.abs(trend).toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">vs ${wellAll.length}d geleden</div></div>
+      </div>
+      ${makeSvgSparkline(wellAll.map(w => w.vo2max), 'var(--success)', 280, 40)}
+    </div>`;
+  }
+
   el.innerHTML = html;
 }
 
@@ -2123,7 +2298,8 @@ function renderStatusTab() {
     const tsb = latest.tsb;
     const tsbKleur = tsb > 5 ? 'var(--success)' : tsb < -10 ? 'var(--danger)' : tsb < -5 ? 'var(--warning)' : 'var(--text)';
     const tsbLabel = tsb > 5 ? 'Fris — kwaliteit mogelijk' : tsb < -10 ? 'Herstel prioriteit' : tsb < -5 ? 'Functionele vermoeidheid' : 'Normale belasting';
-    const acwr = (latest.ctl && latest.atl) ? latest.atl / latest.ctl : null;
+    const acwrCalc = computeWeeklyACWR(intervalsCtx?.activities || []);
+    const acwr = acwrCalc.current?.acwr ?? ((latest.ctl && latest.atl) ? latest.atl / latest.ctl : null);
     const acwrKleur = !acwr ? 'var(--text2)' : acwr <= 1.3 ? 'var(--success)' : acwr <= 1.5 ? 'var(--warning)' : 'var(--danger)';
 
     html += `<div class="card" style="margin-bottom:12px">
@@ -2141,6 +2317,7 @@ function renderStatusTab() {
           ${latest.rust_hr ? `<div><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em">Rust-HR</div><div style="font-size:20px;font-weight:700">${latest.rust_hr}</div></div>` : ''}
         </div>
       </div>
+      ${renderStatusSparklines(wellness)}
     </div>`;
   }
 
@@ -2248,6 +2425,100 @@ function getTodayFromWeekplan() {
   return { dag: todayNl, ...d };
 }
 
+/* ─── VANDAAG VOLTOOID ─── */
+function renderHomeDoneCard() {
+  const card = document.getElementById('home-done-card');
+  const content = document.getElementById('home-done-content');
+  if (!card || !content) return;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const acts = (intervalsCtx?.activities || []).filter(a => {
+    const d = a.start_date_local ? a.start_date_local.split('T')[0] : null;
+    return d === todayIso;
+  });
+  if (!acts.length) { card.style.display = 'none'; return; }
+  const lines = acts.map(a => {
+    const km = a.distance ? (Math.round(a.distance / 100) / 10) + ' km' : '';
+    const min = a.moving_time ? Math.round(a.moving_time / 60) + ' min' : '';
+    const hr = a.average_heartrate ? Math.round(a.average_heartrate) + ' bpm' : '';
+    const pills = [km, min, hr].filter(Boolean).join(' · ');
+    return `<div style="margin-bottom:4px"><span style="font-weight:600">${escapeHtml(a.name || a.type || '—')}</span>${pills ? '<span style="color:var(--muted)"> · ' + pills + '</span>' : ''}</div>`;
+  });
+  content.innerHTML = lines.join('');
+  card.style.display = 'block';
+}
+
+/* ─── WEER WIDGET ─── */
+let _weatherCache = null;
+async function fetchAndRenderWeather() {
+  const card = document.getElementById('home-weather');
+  if (!card) return;
+  try {
+    if (!_weatherCache || Date.now() - _weatherCache.ts > 3_600_000) {
+      let lat = 52.5168, lon = 6.0830;
+      try {
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000, maximumAge: 3_600_000 })
+        );
+        lat = pos.coords.latitude; lon = pos.coords.longitude;
+      } catch {}
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&current=temperature_2m,weathercode,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+        `&timezone=auto&forecast_days=2`;
+      const r = await fetch(url);
+      if (!r.ok) return;
+      _weatherCache = { ts: Date.now(), data: await r.json() };
+    }
+    const d = _weatherCache.data;
+    const wc = d.current?.weathercode ?? 0;
+    const temp = d.current?.temperature_2m;
+    const wind = d.current?.windspeed_10m;
+    const icon = weerIcoon(wc);
+    const omschrijving = weerLabel(wc) + (wind != null ? ` · ${Math.round(wind)} km/u` : '');
+    const tom = d.daily;
+    let tomText = '';
+    if (tom?.weathercode?.[1] != null) {
+      const tmxKleur = tom.temperature_2m_max[1] > 25 ? 'color:var(--warning)' : '';
+      tomText = `<div style="font-size:10px;color:var(--muted)">Morgen</div>` +
+        `<div style="font-size:12px">${weerIcoon(tom.weathercode[1])} ` +
+        `<span style="${tmxKleur}">${Math.round(tom.temperature_2m_max[1])}°</span>` +
+        (tom.precipitation_probability_max?.[1] > 20 ? ` · <span style="color:var(--accent)">${tom.precipitation_probability_max[1]}% regen</span>` : '') +
+        `</div>`;
+    }
+    document.getElementById('wk-icon').textContent = icon;
+    document.getElementById('wk-temp').textContent = temp != null ? Math.round(temp) + '°C' : '—';
+    document.getElementById('wk-desc').textContent = omschrijving;
+    document.getElementById('wk-tom').innerHTML = tomText;
+    card.style.display = 'flex';
+  } catch {}
+}
+
+function weerIcoon(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '⛅';
+  if (code <= 3) return '☁️';
+  if (code <= 49) return '🌫️';
+  if (code <= 57) return '🌧️';
+  if (code <= 67) return '🌧️';
+  if (code <= 77) return '🌨️';
+  if (code <= 82) return '🌦️';
+  if (code <= 86) return '🌨️';
+  if (code <= 99) return '⛈️';
+  return '🌤️';
+}
+function weerLabel(code) {
+  if (code === 0) return 'Helder';
+  if (code <= 2) return 'Gedeeltelijk bewolkt';
+  if (code <= 3) return 'Bewolkt';
+  if (code <= 49) return 'Mist';
+  if (code <= 57) return 'Motregen';
+  if (code <= 67) return 'Regen';
+  if (code <= 77) return 'Sneeuw';
+  if (code <= 82) return 'Buien';
+  if (code <= 86) return 'Sneeuwbuien';
+  if (code <= 99) return 'Onweer';
+  return 'Onbekend';
+}
+
 function renderHomeTab() {
   const naam = CONFIG.naam || 'Jule';
   const uur = new Date().getHours();
@@ -2305,6 +2576,12 @@ function renderHomeTab() {
       potCard.style.display = 'flex';
     }
   }
+
+  // Vandaag voltooid
+  renderHomeDoneCard();
+
+  // Weer (async, non-blocking)
+  fetchAndRenderWeather();
 
   // Today's plan
   const todayEl = document.getElementById('home-today-content');

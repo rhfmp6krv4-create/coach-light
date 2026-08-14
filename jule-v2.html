@@ -891,6 +891,39 @@ body.tab-home .sidebar-progress { visibility: hidden; }
 .injury-history-item { display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border) }
 .injury-history-item:last-child { border-bottom:none }
 
+/* ─── CHECK-IN MODAL ─── */
+#ci-modal {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.72); backdrop-filter: blur(4px);
+  display: none; align-items: flex-end; justify-content: center;
+  padding: 0 0 env(safe-area-inset-bottom);
+}
+.ci-sheet {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r) var(--r) 0 0;
+  padding: 24px 20px 28px; width: 100%; max-width: 480px;
+}
+.ci-emojis { display: flex; gap: 8px; justify-content: center; margin: 14px 0; }
+.ci-btn {
+  font-size: 28px; background: var(--surface2); border: 2px solid transparent;
+  border-radius: var(--r-sm); padding: 8px 12px; cursor: pointer;
+  transition: border-color .15s, opacity .15s; opacity: .45;
+  font-family: inherit;
+}
+.ci-btn.selected { border-color: var(--accent); opacity: 1; }
+.ci-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 13px;
+  font-family: var(--font); outline: none; resize: none; box-sizing: border-box;
+}
+/* ─── MARATHON POTENTIE ─── */
+.home-pot-card {
+  margin: 8px 16px 0; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); display: flex; align-items: center;
+  justify-content: space-between; display: none;
+}
+
 /* ─── MATERIAAL ─── */
 .materiaal-scroll { overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px }
 .schoen-card { background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden }
@@ -1085,6 +1118,17 @@ body.tab-home .sidebar-progress { visibility: hidden; }
             </div>
           </div>
 
+          <div class="home-pot-card" id="home-pot-card">
+            <div>
+              <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)">Marathonschatting</div>
+              <div style="font-size:26px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums" id="home-pot-time">—</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--text2)" id="home-pot-sub">o.b.v. pace/HR data</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px" id="home-pot-runs"></div>
+            </div>
+          </div>
+
           <div class="card home-today-card">
             <div class="label" style="margin-bottom:8px">Vandaag</div>
             <div id="home-today-content" style="font-size:14px;color:var(--text2);line-height:1.6">Weekplan wordt geladen…</div>
@@ -1149,6 +1193,10 @@ body.tab-home .sidebar-progress { visibility: hidden; }
         <div id="status-scroll" style="overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:16px">
           <div id="status-content"><div style="padding:40px 0;text-align:center;color:var(--text2);font-size:13px">Statusdata laden…</div></div>
           <div style="padding:16px 0 0">
+            <button class="btn btn-secondary btn-full" onclick="showCheckin()" style="margin-bottom:8px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Week check-in invullen
+            </button>
             <button class="btn btn-secondary btn-full" onclick="quickSend('Check-in: hoe staat mijn herstel ervoor op basis van de actuele data? TSB-trend, CTL-opbouw, slaap. Wees direct en concreet.');switchTab('chat')">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Check-in met de coach
@@ -1499,6 +1547,28 @@ body.tab-home .sidebar-progress { visibility: hidden; }
 
 </div><!-- /app -->
 
+<!-- CHECK-IN MODAL -->
+<div id="ci-modal" onclick="if(event.target===this)this.style.display='none'">
+  <div class="ci-sheet">
+    <div style="font-size:16px;font-weight:700;margin-bottom:3px">Week check-in</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Hoe voel je je vandaag?</div>
+    <div class="ci-emojis">
+      <button class="ci-btn" data-s="1" onclick="setCiScore(1)">😞</button>
+      <button class="ci-btn" data-s="2" onclick="setCiScore(2)">😕</button>
+      <button class="ci-btn" data-s="3" onclick="setCiScore(3)">😐</button>
+      <button class="ci-btn" data-s="4" onclick="setCiScore(4)">🙂</button>
+      <button class="ci-btn" data-s="5" onclick="setCiScore(5)">😊</button>
+    </div>
+    <textarea id="ci-opm" class="ci-input" rows="3" placeholder="Bijzonderheden, spierpijn, slaap, motivatie… (optioneel)" style="margin-bottom:10px"></textarea>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px">
+      <label style="font-size:13px;color:var(--text2);flex-shrink:0">Gewicht (kg)</label>
+      <input type="number" id="ci-gew" class="ci-input" step="0.1" placeholder="bijv. 62.5" style="flex:1">
+    </div>
+    <button onclick="submitCheckin()" style="width:100%;padding:13px;background:var(--grad);border:none;color:#fff;border-radius:var(--r-sm);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;margin-bottom:8px">Opslaan & coach vragen om advies</button>
+    <button onclick="document.getElementById('ci-modal').style.display='none'" style="width:100%;padding:11px;background:none;border:1px solid var(--border2);color:var(--text2);border-radius:var(--r-sm);font-size:13px;font-family:var(--font);cursor:pointer">Annuleren</button>
+  </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════
    CONSTANTS
@@ -1512,7 +1582,8 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let CONFIG = {};
 let intervalsCtx = null;
 let stravaAnalysis = null;
-let MEM = { macroplan: null, weekplannen: [], flags: [], zones: null, voeding: null, kracht: null, blessures: null };
+let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [], zones: null, voeding: null, kracht: null, blessures: null };
+let ciScore = 0;
 let messages = [];
 let isLoading = false;
 let currentTab = 'chat';
@@ -1593,7 +1664,7 @@ function setStatus(s) {
    MEMORY
 ═══════════════════════════════════════════ */
 async function loadMem() {
-  const [macro, weeks, flags, zones, sa, chatH, voeding, kracht, blessures, sharedPlan] = await Promise.all([
+  const [macro, weeks, flags, zones, sa, chatH, voeding, kracht, blessures, sharedPlan, checkins] = await Promise.all([
     sbLoad('mem_macroplan'),
     sbLoad('mem_weekplannen'),
     sbLoad('mem_flags'),
@@ -1604,10 +1675,12 @@ async function loadMem() {
     sbLoad('mem_kracht'),
     sbLoad('mem_blessures'),
     sbLoad('weekplan_current'),
+    sbLoad('mem_checkins'),
   ]);
 
   MEM.macroplan = macro || null;
   MEM.weekplannen = weeks || [];
+  MEM.checkins = checkins || [];
   MEM.flags = flags || [];
   MEM.zones = zones || null;
   MEM.voeding = voeding || { log: {} };
@@ -2217,6 +2290,16 @@ function renderHomeTab() {
       el.textContent = acwr;
       const v = parseFloat(acwr);
       el.className = 'stat-val ' + (v < 0.8 ? '' : v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
+    }
+
+    // Marathon potentie
+    const pot = computeMarathonPotentie();
+    const potCard = document.getElementById('home-pot-card');
+    if (pot && potCard) {
+      document.getElementById('home-pot-time').textContent = pot.time;
+      document.getElementById('home-pot-time').style.color = pot.min < 240 ? 'var(--success)' : pot.min < 270 ? 'var(--warning)' : 'var(--text)';
+      document.getElementById('home-pot-runs').textContent = pot.punten + ' runs';
+      potCard.style.display = 'flex';
     }
   }
 
@@ -3404,8 +3487,9 @@ ${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende b
   const memParts = [];
   if (MEM.macroplan) memParts.push('MACROPLAN:\n' + JSON.stringify(MEM.macroplan));
   if (MEM.weekplannen?.length) memParts.push('RECENTE WEEKPLANNINGEN:\n' + JSON.stringify(MEM.weekplannen.slice(-3)));
+  if (MEM.checkins?.length) memParts.push('RECENTE CHECK-INS (subjectief gevoel + gewicht):\n' + JSON.stringify(MEM.checkins.slice(-4)));
   if (MEM.flags?.filter(f=>!f.opgelost).length) {
-    memParts.push('AANDACHTSPUNTEN (bereken hoe lang geleden o.b.v. "datum" vs. huidige datum — vertrouw nooit op relatieve tijdsaanduidingen in "omschrijving"):\n' + JSON.stringify(MEM.flags.filter(f=>!f.opgelost)));
+    memParts.push('AANDACHTSPUNTEN:\n' + JSON.stringify(MEM.flags.filter(f=>!f.opgelost)));
   }
   if (MEM.zones) memParts.push('HARTSLAGZONES (empirisch):\n' + JSON.stringify(MEM.zones));
   const activeBlessures = (MEM.blessures || []).filter(b => b.status === 'actief');
@@ -3469,7 +3553,8 @@ ${profiel}
 - Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen bij duidelijke reden.
 - Sla macroplan op als MACROPLAN_JSON: {...}
 - VERPLICHT bij elk weekschema: sluit af met WEEKPLAN_JSON: {"maandag": {"type": "...", "datum": "YYYY-MM-DD"}, "dinsdag": {...}, ...} — gebruik ALTIJD datums uit de kalendertabel hierboven
-- Sla aandachtspunten op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false}. De datum wordt automatisch toegevoegd — NOOIT relatieve tijdsaanduidingen in "omschrijving".
+- Sla aandachtspunten op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false}. Datum wordt automatisch toegevoegd — NOOIT relatieve tijdsaanduidingen in "omschrijving". VERPLICHT: bekijk bij elk gesprek de AANDACHTSPUNTEN in COACHGEHEUGEN — als een vlag ouder is dan zijn logische herstelvenster (bv. "vermoeidheid" na 7+ dagen rust), stuur dan FLAG_JSON met "opgelost": true om het te sluiten.
+- Bij een week check-in: ga eerst in op de subjectieve check-in score + opmerkingen, vergelijk met objectieve TSB/HR/slaap, en geef een concreet advies voor de komende week.
 - Bij nieuwe empirische HR-zone data: sla op als ZONES_JSON: {"bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [...]}
 
 # TSB INTERPRETATIE
@@ -3477,6 +3562,14 @@ TSB > +5: fris, kwaliteitswork mogelijk
 TSB -5 tot +5: normale belasting
 TSB -10 tot -5: functionele vermoeidheid, bewaken
 TSB < -10: herstel prioriteren
+
+# OVERIGE WELLNESS-METRICS (slaap, rust_hr, gewicht, stappen)
+CTL/ATL/TSB zijn de primaire, objectieve maat — baseer je hoofdadvies daarop.
+Slaap/rust_hr/gewicht zijn ondersteunende signalen, geen losse oordelen:
+- Geef NOOIT een kwalificatie ("kort", "slecht", "hoog") zonder eigen baseline als referentie.
+- Vergelijk altijd met haar eigen recente gemiddelde uit de WELLNESS-data (bv. "6,5u ligt onder haar gemiddelde van 7,8u afgelopen 2 weken").
+- Geen eigen baseline beschikbaar? Noem dan een algemene richtlijn én zeg expliciet dat er te weinig data is.
+- Bij twijfel: laat de metric weg of benoem expliciet dat conclusies onzeker zijn.
 
 # TRAININGSDATA (Intervals.icu) — ENIGE bron voor trainingsgeschiedenis
 Verzin NOOIT activiteiten, datums of cijfers die hier niet instaan.
@@ -3494,6 +3587,86 @@ Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric
 Huidige week:
 ${weekLines.join('\n')}
 KALENDERREGEL: Gebruik bovenstaande datums voor alle dag-naar-datum verwijzingen. Reken NOOIT zelf dag-naar-datum uit.`;
+}
+
+/* ═══════════════════════════════════════════
+   MARATHON POTENTIE
+═══════════════════════════════════════════ */
+function computeMarathonPotentie() {
+  const acts = intervalsCtx?.activities || [];
+  const runs = acts.filter(a => a.type === 'Run' && a.average_heartrate && a.distance && a.moving_time).slice(0, 10);
+  if (runs.length < 3) return null;
+
+  const maxHR = parseInt(CONFIG.maxHR) || 185;
+  // Use recent resting HR from wellness if available
+  const well7 = (intervalsCtx?.wellness || []).slice(-7);
+  const restHRSamples = well7.map(w => w.restingHR).filter(Boolean);
+  const restHR = restHRSamples.length ? Math.round(restHRSamples.reduce((s,v)=>s+v,0)/restHRSamples.length) : 50;
+  const hrReserve = maxHR - restHR;
+  const drempel = maxHR - 14;
+
+  const punten = [];
+  for (const r of runs) {
+    const hr = r.average_heartrate;
+    if (hr < 130 || hr > drempel + 5) continue;
+    const distKm = r.distance / 1000;
+    if (distKm < 5) continue;
+    const pace = r.moving_time / distKm;
+    const hrrPct = (hr - restHR) / hrReserve * 100;
+    punten.push([hrrPct, pace]);
+  }
+  if (punten.length < 3) return null;
+
+  const n = punten.length;
+  const sX = punten.reduce((s,p)=>s+p[0],0);
+  const sY = punten.reduce((s,p)=>s+p[1],0);
+  const sXY = punten.reduce((s,p)=>s+p[0]*p[1],0);
+  const sXX = punten.reduce((s,p)=>s+p[0]*p[0],0);
+  const b = (n*sXY - sX*sY) / (n*sXX - sX*sX);
+  const a = (sY - b*sX) / n;
+  const marathonHRR = (drempel - 5 - restHR) / hrReserve * 100;
+  const pace = (a + b * marathonHRR) * 1.05;
+  const marathonMin = pace * 42.195 / 60;
+  const h = Math.floor(marathonMin / 60);
+  const m = Math.floor(marathonMin % 60);
+  return { time: h + ':' + String(m).padStart(2,'0'), min: marathonMin, punten: punten.length };
+}
+
+/* ═══════════════════════════════════════════
+   CHECK-IN
+═══════════════════════════════════════════ */
+function showCheckin() {
+  ciScore = 0;
+  document.getElementById('ci-opm').value = '';
+  document.getElementById('ci-gew').value = '';
+  document.querySelectorAll('.ci-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('ci-modal').style.display = 'flex';
+}
+
+function setCiScore(s) {
+  ciScore = s;
+  document.querySelectorAll('.ci-btn').forEach(b =>
+    b.classList.toggle('selected', parseInt(b.dataset.s) === s)
+  );
+}
+
+async function submitCheckin() {
+  const ci = {
+    datum: new Date().toISOString().split('T')[0],
+    score: ciScore,
+    opmerkingen: document.getElementById('ci-opm').value.trim(),
+    gewicht: document.getElementById('ci-gew').value || null
+  };
+  const checkins = MEM.checkins || [];
+  checkins.push(ci);
+  await saveMem('checkins', checkins.slice(-20));
+  document.getElementById('ci-modal').style.display = 'none';
+  const labels = {1:'heel slecht',2:'slecht',3:'gemiddeld',4:'goed',5:'uitstekend'};
+  quickSend('Week check-in: gevoel ' + (labels[ciScore] || ciScore) + '/5'
+    + (ci.opmerkingen ? ', bijzonderheden: ' + ci.opmerkingen : '')
+    + (ci.gewicht ? ', gewicht: ' + ci.gewicht + ' kg' : '')
+    + '. Analyseer mijn week op basis van de Intervals data en geef advies voor de komende week.');
+  switchTab('chat');
 }
 
 /* ═══════════════════════════════════════════

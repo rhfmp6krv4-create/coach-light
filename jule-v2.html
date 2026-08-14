@@ -1142,8 +1142,12 @@ h3 { font-size: 16px; font-weight: 600; }
           </div>
 
           <div class="card home-today-card">
-            <div class="label" style="margin-bottom:8px">Vandaag</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div class="label">Vandaag</div>
+              <button id="home-week-toggle" onclick="toggleHomeWeek()" style="background:none;border:none;font-size:11px;color:var(--text2);cursor:pointer;padding:2px 6px;border-radius:6px;display:none">Hele week ▾</button>
+            </div>
             <div id="home-today-content" style="font-size:14px;color:var(--text2);line-height:1.6">Weekplan wordt geladen…</div>
+            <div id="home-week-content" style="display:none;margin-top:12px;border-top:1px solid var(--border2);padding-top:12px"></div>
           </div>
 
           <div class="card home-insight-card" id="home-insight-card" style="margin-top:0">
@@ -2033,13 +2037,14 @@ function makeSvgSparkline(vals, color, w = 120, h = 28) {
 
 function renderStatusSparklines(wellness) {
   const last14 = wellness.slice(-14);
+  const last42 = wellness.slice(-42); // VO2max changes slowly — needs wider window
   if (last14.length < 3) return '';
   const hrVals = last14.map(w => w.rust_hr);
   const sleepVals = last14.map(w => w.slaap_uren);
-  const vo2Vals = last14.map(w => w.vo2max);
-  const hrClean = hrVals.filter(Boolean);
-  const sleepClean = sleepVals.filter(Boolean);
-  const vo2Clean = vo2Vals.filter(Boolean);
+  const vo2Vals = last42.map(w => w.vo2max);
+  const hrClean = hrVals.filter(v => v != null);
+  const sleepClean = sleepVals.filter(v => v != null);
+  const vo2Clean = vo2Vals.filter(v => v != null);
   let out = '<div class="sparkline-wrap">';
   if (hrClean.length >= 3) {
     const avg = Math.round(hrClean.reduce((s,v) => s+v, 0) / hrClean.length);
@@ -2057,12 +2062,21 @@ function renderStatusSparklines(wellness) {
       ${makeSvgSparkline(sleepVals, 'var(--cyan)')}
     </div>`;
   }
-  if (vo2Clean.length >= 3) {
-    out += `<div class="sparkline-item">
-      <div class="sparkline-lbl">VO₂max (14d)</div>
-      <div class="sparkline-val" style="color:var(--success)">${vo2Clean[vo2Clean.length-1]}</div>
-      ${makeSvgSparkline(vo2Vals, 'var(--success)')}
-    </div>`;
+  if (vo2Clean.length >= 1) {
+    const vo2Latest = vo2Clean[vo2Clean.length - 1];
+    const vo2Range = vo2Clean.length >= 2 ? Math.max(...vo2Clean) - Math.min(...vo2Clean) : 0;
+    if (vo2Range >= 0.5 && vo2Clean.length >= 3) {
+      out += `<div class="sparkline-item">
+        <div class="sparkline-lbl">VO₂max (42d)</div>
+        <div class="sparkline-val" style="color:var(--success)">${vo2Latest}</div>
+        ${makeSvgSparkline(vo2Vals, 'var(--success)')}
+      </div>`;
+    } else {
+      out += `<div class="sparkline-item">
+        <div class="sparkline-lbl">VO₂max</div>
+        <div class="sparkline-val" style="color:var(--success)">${vo2Latest} <span style="font-size:10px;font-weight:400;color:var(--muted)">stabiel</span></div>
+      </div>`;
+    }
   }
   out += '</div>';
   return out === '<div class="sparkline-wrap"></div>' ? '' : out;
@@ -2232,8 +2246,8 @@ function renderAnalyseTab() {
     html += `<div class="card card-sm" style="padding:12px 10px">${longRunSvg}</div>`;
   }
 
-  // VO2max trend (from wellness)
-  const wellAll = (intervalsCtx?.wellness || []).map(cleanWellness).filter(w => w.datum && w.vo2max != null).slice(-20);
+  // VO2max trend (from wellness — 60-day window since it changes slowly)
+  const wellAll = (intervalsCtx?.wellness || []).map(cleanWellness).filter(w => w.datum && w.vo2max != null).slice(-60);
   if (wellAll.length >= 3) {
     const latest = wellAll[wellAll.length - 1];
     const earliest = wellAll[0];
@@ -2348,6 +2362,29 @@ function renderStatusTab() {
 /* ═══════════════════════════════════════════
    HOME TAB RENDERER
 ═══════════════════════════════════════════ */
+/* Flatten nested week_N sub-objects so day entries are always at top level.
+   Handles plans shaped like { week_7: { maandag_18: {...}, dinsdag_19: {...} } } */
+function flattenPlanDays(plan) {
+  const dagNamen = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+  const isDagKey = k => { const kl = k.toLowerCase(); return dagNamen.some(d => kl === d || kl.startsWith(d + '_') || kl.startsWith(d + ' ')); };
+  const base = plan.dagen || plan.days || plan;
+  // Find nested week sub-objects (objects whose keys include day names)
+  const weekSubs = Object.keys(base).filter(k => {
+    const v = base[k];
+    return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).some(isDagKey);
+  });
+  if (!weekSubs.length) return base;
+  // Pick the sub that covers today, else pick first
+  const today = new Date().toISOString().slice(0, 10);
+  let chosen = base[weekSubs[0]];
+  for (const k of weekSubs) {
+    const sub = base[k];
+    const dates = Object.values(sub).filter(v => v && typeof v === 'object').map(v => v.datum || v.date).filter(Boolean);
+    if (dates.some(d => d >= today)) { chosen = sub; break; }
+  }
+  return chosen;
+}
+
 function getBestWeekplan() {
   if (!MEM.weekplannen?.length) return null;
   const weeks = Array.isArray(MEM.weekplannen) ? MEM.weekplannen : [MEM.weekplannen];
@@ -2361,7 +2398,7 @@ function getBestWeekplan() {
 
   weeks.forEach(w => {
     const plan = w.plan || w;
-    const dagData = plan.dagen || plan.days || plan;
+    const dagData = flattenPlanDays(plan);
     const isos = Object.values(dagData)
       .filter(v => v && typeof v === 'object' && !Array.isArray(v))
       .map(v => v.datum || v.date).filter(Boolean).sort();
@@ -2384,7 +2421,7 @@ function getTodayFromWeekplan() {
   const best = getBestWeekplan();
   if (!best) return null;
   const plan = best.plan || best;
-  const dagData = plan.dagen || plan.days || plan;
+  const dagData = flattenPlanDays(plan);
   const dagNamen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
   const todayNl = dagNamen[new Date().getDay()];
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -2567,6 +2604,13 @@ function renderHomeTab() {
   const todayEl = document.getElementById('home-today-content');
   if (todayEl) {
     const td = getTodayFromWeekplan();
+    // Show toggle button if weekplan exists
+    const toggleBtn = document.getElementById('home-week-toggle');
+    if (toggleBtn) toggleBtn.style.display = MEM.weekplannen?.length ? 'inline-block' : 'none';
+    // Reset week expansion on re-render
+    const weekContent = document.getElementById('home-week-content');
+    if (weekContent) { weekContent.style.display = 'none'; weekContent.removeAttribute('data-rendered'); }
+    if (toggleBtn) toggleBtn.textContent = 'Hele week ▾';
     if (td) {
       // Normalize field aliases (same as renderWeekplan)
       const typeRaw = td.type || td.training || td.sessie || td.soort || '';
@@ -2600,6 +2644,25 @@ function renderHomeTab() {
   }
 
   generateHomeInsight();
+}
+
+function toggleHomeWeek() {
+  const el = document.getElementById('home-week-content');
+  const btn = document.getElementById('home-week-toggle');
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  if (open) {
+    el.style.display = 'none';
+    if (btn) btn.textContent = 'Hele week ▾';
+  } else {
+    el.style.display = 'block';
+    if (btn) btn.textContent = 'Hele week ▴';
+    if (!el.dataset.rendered) {
+      const best = getBestWeekplan();
+      el.innerHTML = best ? renderWeekplan(best) : '<span style="color:var(--muted)">Geen weekplan.</span>';
+      el.dataset.rendered = '1';
+    }
+  }
 }
 
 async function generateHomeInsight() {
@@ -2768,10 +2831,10 @@ function renderWeekplan(week) {
   let html = '';
 
   // Collect day entries: handles { maandag: {...} }, { dagen: { maandag: {...} } },
-  // and coach compound keys like { zondag_19_juli: {...} }
+  // nested { week_7: { maandag_18: {...} } }, and compound keys like { zondag_19_juli: {...} }
   let dagEntries = []; // [{dagNaam, iso, data}]
 
-  const dagData = plan.dagen || plan.days || plan;
+  const dagData = flattenPlanDays(plan);
   for (const key of Object.keys(dagData)) {
     const val = dagData[key];
     if (typeof val !== 'object' || val === null || Array.isArray(val)) continue;
@@ -2831,13 +2894,26 @@ function renderWeekplan(week) {
     ? fmtNlShort(calFirst) + '–' + fmtNlFull(calLast)
     : weekLabel;
 
+  // Find current active macro block (if macroplan available)
+  let activeBlok = null;
+  if (MEM.macroplan) {
+    const fases = MEM.macroplan.fases || MEM.macroplan.fasen || MEM.macroplan.phases || MEM.macroplan.blocks || MEM.macroplan.blokken || [];
+    const act = fases.find(f => {
+      const s = nlDatumToIso(f.startdatum || f.start_datum || f.start || f.van);
+      const e = nlDatumToIso(f.einddatum || f.eind_datum || f.eind || f.tot);
+      return s && e && today >= s && today <= e;
+    });
+    if (act) activeBlok = act.naam || act.name || (act.block ? 'Blok ' + act.block : null);
+  }
+
   // Re-render header with corrected label (replaces whatever the plan stored)
   html = '';
-  if (correctWeekLabel || blokLabel) {
+  if (correctWeekLabel || blokLabel || activeBlok) {
     html += '<div style="margin-bottom:12px">';
-    html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(correctWeekLabel) + '</div>';
-    if (blokLabel) html += '<div style="font-size:12px;color:var(--accent);margin-top:2px">' + escapeHtml(blokLabel) + '</div>';
-    if (focusLabel) html += '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + escapeHtml(focusLabel) + '</div>';
+    if (activeBlok) html += '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">' + escapeHtml(activeBlok) + '</div>';
+    html += '<div style="font-size:14px;font-weight:600;color:var(--text)">' + escapeHtml(correctWeekLabel || '') + '</div>';
+    const subLabel = blokLabel && blokLabel !== activeBlok ? blokLabel : focusLabel;
+    if (subLabel) html += '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + escapeHtml(subLabel) + '</div>';
     html += '</div>';
   }
 

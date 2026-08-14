@@ -444,13 +444,11 @@ h3 { font-size: 16px; font-weight: 600; }
   padding: 16px;
   align-content: center;
 }
-/* Home: hide sidebar progress bar — hero section already shows it prominently */
-body.tab-home .sidebar-progress { display: none; }
-
-/* Sidebar progress (sub-pages) */
+/* Sidebar progress — always visible, pinned above Chat via margin-top:auto */
 .sidebar-progress {
-  padding: 14px 20px 10px;
-  border-bottom: 1px solid var(--border);
+  margin-top: auto;
+  padding: 10px 12px 6px;
+  border-top: 1px solid var(--border);
 }
 
 /* Journey progress bar */
@@ -1026,16 +1024,6 @@ body.tab-home .sidebar-progress { display: none; }
 
       </div>
 
-      <!-- Progress bar — shown on sub-pages only -->
-      <div class="sidebar-progress">
-        <div class="sidebar-countdown">
-          <strong id="countdown-days">—</strong> dagen te gaan
-        </div>
-        <div class="journey-bar-track">
-          <div class="journey-bar-fill" id="journey-fill" style="width:0%"></div>
-        </div>
-      </div>
-
       <!-- Hidden refs kept for JS -->
       <span id="sidebar-name" style="display:none"></span>
       <span id="sidebar-race" style="display:none"></span>
@@ -1073,6 +1061,16 @@ body.tab-home .sidebar-progress { display: none; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
           Materiaal
         </button>
+        <!-- Progress bar — always above Chat, no layout shift -->
+        <div class="sidebar-progress">
+          <div class="sidebar-countdown">
+            <strong id="countdown-days">—</strong> dagen te gaan
+          </div>
+          <div class="journey-bar-track">
+            <div class="journey-bar-fill" id="journey-fill" style="width:0%"></div>
+          </div>
+        </div>
+
         <button class="sidebar-tab" data-tab="chat" onclick="switchTab('chat')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Chat

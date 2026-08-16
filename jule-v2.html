@@ -1674,6 +1674,7 @@ let stravaCtx = null; // null | { connected: true, athlete_name: string }
 const STRAVA_CLIENT_ID = '260913';
 let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [], zones: null, voeding: null, kracht: null, blessures: null };
 let _keuzestress = null;
+let _stravaActivities = null; // cached from direct Strava fetch (async)
 let ciScore = 0;
 let messages = [];
 let isLoading = false;
@@ -2648,53 +2649,12 @@ function renderHomeTab() {
       el.className = 'stat-val ' + (v < 0.8 ? '' : v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
     }
 
-    // Race prognose — fill both current and forward-looking estimates
-    const potNu = computeMarathonPotentie();
-    const potOkt = computeRacePrognose();
-    const potCard = document.getElementById('home-pot-card');
-    if ((potNu || potOkt) && potCard) {
-      const best = potOkt || potNu;
-      document.getElementById('home-pot-time').textContent = best.time;
-      document.getElementById('home-pot-time').style.color = best.min < 240 ? 'var(--success)' : best.min < 270 ? 'var(--warning)' : 'var(--text)';
-      document.getElementById('home-pot-sub').textContent = '18 oktober';
-      document.getElementById('home-pot-runs').textContent = potOkt?.weeksToRace != null ? potOkt.weeksToRace + ' wkn te gaan' : '';
-      potCard.style.display = 'block';
-
-      // Fill "Potentie nu" row
-      const rowNu = document.getElementById('pot-row-nu');
-      if (rowNu && potNu) {
-        const c = potNu.min < 240 ? 'var(--success)' : potNu.min < 270 ? 'var(--warning)' : 'var(--text)';
-        rowNu.innerHTML =
-          '<div class="pot-row-header">'
-          + '<span class="pot-row-time" style="color:' + c + '">' + potNu.time + '</span>'
-          + '<span class="pot-row-label">Potentie nu</span>'
-          + '</div>'
-          + '<div class="pot-row-explain">Berekend op basis van de pace/HR-verhouding van je laatste ' + (potNu.punten || '—') + ' trainingsruns. Via lineaire regressie wordt je drempeltempo geschat; het marathontempo ligt ~5% lager dan je drempel. Dit is je <em>huidige</em> capaciteit — met vermoeidheid van de trainingsbelasting inbegrepen.</div>'
-          + '<div class="pot-row-factors">'
-          + '<span class="pot-factor">pace/HR regressie</span>'
-          + '<span class="pot-factor">drempeltempo − 5%</span>'
-          + '<span class="pot-factor">geen taperfactor</span>'
-          + '</div>';
-      }
-
-      // Fill "Potentie 18 oktober" row
-      const rowOkt = document.getElementById('pot-row-okt');
-      if (rowOkt && potOkt) {
-        const c = potOkt.min < 240 ? 'var(--success)' : potOkt.min < 270 ? 'var(--warning)' : 'var(--text)';
-        const wkn = potOkt.buildWeeks || 0;
-        rowOkt.innerHTML =
-          '<div class="pot-row-header">'
-          + '<span class="pot-row-time" style="color:' + c + '">' + potOkt.time + '</span>'
-          + '<span class="pot-row-label">Prognose 18 oktober</span>'
-          + '</div>'
-          + '<div class="pot-row-explain">Dezelfde basis als "Potentie nu", maar gecorrigeerd voor wedstrijdomstandigheden en toekomstige fitnessgroei. Op racedag ben je uitgerust na 3 weken taper (+7% sneller dan trainingsdata suggereert). Daarnaast groeien je CTL en aëroob vermogen de komende ' + wkn + ' opbouwweken nog door; elke gewonnen CTL-punt telt voor ~0,3% prestatiewinst.</div>'
-          + '<div class="pot-row-factors">'
-          + '<span class="pot-factor">taper +7%</span>'
-          + '<span class="pot-factor">marathon vs drempel −4%</span>'
-          + '<span class="pot-factor">CTL-groei ' + wkn + ' wkn</span>'
-          + '<span class="pot-factor">0,3%/CTL-punt</span>'
-          + '</div>';
-      }
+    // Race prognose — render immediately, then async-refresh if Strava activities load
+    renderPotCard();
+    if (_stravaAccessToken && _stravaActivities === null) {
+      fetchStravaActivities().then(() => {
+        if (currentTab === 'home') renderPotCard();
+      });
     }
   }
 
@@ -2748,6 +2708,64 @@ function renderHomeTab() {
   }
 
   generateHomeInsight();
+}
+
+function renderPotCard() {
+  const data = computePrognoseData();
+  const potCard = document.getElementById('home-pot-card');
+  if (!data || !potCard) return;
+
+  // Summary row
+  const timeEl = document.getElementById('home-pot-time');
+  const subEl  = document.getElementById('home-pot-sub');
+  const runsEl = document.getElementById('home-pot-runs');
+  if (timeEl) { timeEl.textContent = data.oktTime; timeEl.style.color = data.oktMin < 240 ? 'var(--success)' : data.oktMin < 270 ? 'var(--warning)' : 'var(--text)'; }
+  if (subEl)  subEl.textContent = '18 oktober';
+  if (runsEl) runsEl.textContent = data.weeksToRace != null ? data.weeksToRace + ' wkn te gaan' : '';
+  potCard.style.display = 'block';
+
+  // Quality tag for data source
+  const srcQuality = data.src?.startsWith('Strava GPS') ? '★★★' : data.src?.startsWith('Strava (') ? '★★☆' : '★☆☆';
+  const srcNote = data.buckets
+    ? data.punten.toLocaleString() + ' GPS-punten, ' + data.buckets + ' tempo-buckets'
+    : data.punten + ' runs';
+
+  // "Potentie nu" row
+  const rowNu = document.getElementById('pot-row-nu');
+  if (rowNu) {
+    const c = data.nuMin < 240 ? 'var(--success)' : data.nuMin < 270 ? 'var(--warning)' : 'var(--text)';
+    rowNu.innerHTML =
+      '<div class="pot-row-header">'
+      + '<span class="pot-row-time" style="color:' + c + '">' + data.nuTime + '</span>'
+      + '<span class="pot-row-label">Potentie nu</span>'
+      + '</div>'
+      + '<div class="pot-row-explain">Drempeltempo bepaald via pace/HR-regressie op <strong>' + srcNote + '</strong> uit <em>' + data.src + '</em>. Marathontempo = drempel × 1,05 (Billat/Daniels). Dit is de <em>huidige</em> capaciteit onder trainingsbelasting — geen taperfactor inbegrepen.</div>'
+      + '<div class="pot-row-factors">'
+      + '<span class="pot-factor">' + data.src + '</span>'
+      + '<span class="pot-factor">drempel × 1,05</span>'
+      + '<span class="pot-factor">databron ' + srcQuality + '</span>'
+      + '</div>';
+  }
+
+  // "Prognose 18 oktober" row
+  const rowOkt = document.getElementById('pot-row-okt');
+  if (rowOkt) {
+    const c = data.oktMin < 240 ? 'var(--success)' : data.oktMin < 270 ? 'var(--warning)' : 'var(--text)';
+    rowOkt.innerHTML =
+      '<div class="pot-row-header">'
+      + '<span class="pot-row-time" style="color:' + c + '">' + data.oktTime + '</span>'
+      + '<span class="pot-row-label">Prognose 18 oktober</span>'
+      + '</div>'
+      + '<div class="pot-row-explain">Zelfde drempeltempo, maar gecorrigeerd: '
+      + '<strong>taper-bonus +7%</strong> (uitgerust na 3 weken afbouw), '
+      + '<strong>marathon vs drempel ×1,04</strong> (raceomstandigheden), '
+      + 'en nog <strong>' + data.buildWeeks + ' opbouwweken</strong> CTL-groei (+' + data.ctlGain + ' CTL, ~0,3%/punt).</div>'
+      + '<div class="pot-row-factors">'
+      + '<span class="pot-factor">taper +7%</span>'
+      + '<span class="pot-factor">drempel × 1,04</span>'
+      + '<span class="pot-factor">+' + data.ctlGain + ' CTL over ' + data.buildWeeks + ' wkn</span>'
+      + '</div>';
+  }
 }
 
 function togglePotCard() {
@@ -4374,129 +4392,184 @@ KALENDERREGEL: Gebruik bovenstaande datums voor alle dag-naar-datum verwijzingen
 /* ═══════════════════════════════════════════
    MARATHON POTENTIE
 ═══════════════════════════════════════════ */
-function computeMarathonPotentie() {
-  // Kept for system prompt context: "current training estimate"
-  const acts = intervalsCtx?.activities || [];
-  const runs = acts.filter(a => a.type === 'Run' && a.average_heartrate && a.distance && a.moving_time).slice(0, 10);
-  if (runs.length < 3) return null;
+/* ── Shared HR helpers ── */
+function _getHrParams() {
   const maxHR = parseInt(CONFIG.maxHR) || 185;
   const well7 = (intervalsCtx?.wellness || []).slice(-7);
   const restHRSamples = well7.map(w => w.restingHR).filter(Boolean);
   const restHR = restHRSamples.length ? Math.round(restHRSamples.reduce((s,v)=>s+v,0)/restHRSamples.length) : 50;
   const hrReserve = maxHR - restHR;
-  const drempel = maxHR - 14;
-  const punten = [];
+  const drempel = maxHR - 14; // ~LT2 / threshold
+  return { maxHR, restHR, hrReserve, drempel };
+}
+
+// Fit a linear pace~HRR regression on a list of run activities.
+// Returns { a, b, punten, src } or null.
+function _paceHrRegression(runs) {
+  const { restHR, hrReserve, drempel } = _getHrParams();
+  const pts = [];
   for (const r of runs) {
     const hr = r.average_heartrate;
-    if (hr < 130 || hr > drempel + 5) continue;
-    const distKm = r.distance / 1000;
-    if (distKm < 5) continue;
-    const pace = r.moving_time / distKm;
+    if (!hr || hr < 120 || hr > drempel + 10) continue;
+    const distKm = (r.distance || 0) / 1000;
+    if (distKm < 4) continue;
+    const pace = r.moving_time / distKm; // sec/km
+    if (pace < 190 || pace > 560) continue; // sanity: 3:10–9:20/km
     const hrrPct = (hr - restHR) / hrReserve * 100;
-    punten.push([hrrPct, pace]);
+    pts.push([hrrPct, pace]);
   }
-  if (punten.length < 3) return null;
-  const n = punten.length;
-  const sX = punten.reduce((s,p)=>s+p[0],0);
-  const sY = punten.reduce((s,p)=>s+p[1],0);
-  const sXY = punten.reduce((s,p)=>s+p[0]*p[1],0);
-  const sXX = punten.reduce((s,p)=>s+p[0]*p[0],0);
-  const b = (n*sXY - sX*sY) / (n*sXX - sX*sX);
+  if (pts.length < 3) return null;
+  const n = pts.length;
+  const sX = pts.reduce((s,p)=>s+p[0],0);
+  const sY = pts.reduce((s,p)=>s+p[1],0);
+  const sXY = pts.reduce((s,p)=>s+p[0]*p[1],0);
+  const sXX = pts.reduce((s,p)=>s+p[0]*p[0],0);
+  const denom = n*sXX - sX*sX;
+  if (!denom) return null;
+  const b = (n*sXY - sX*sY) / denom;
+  const a = (sY - b*sX) / n;
+  return { a, b, punten: n, drempel };
+}
+
+// Compute marathon time (min) from threshold pace (sec/km) using a factor.
+function _minFromThreshPace(threshPaceSec, factor) {
+  const racePace = threshPaceSec * factor;
+  return racePace * 42.195 / 60;
+}
+
+function _minToTime(min) {
+  const h = Math.floor(min / 60);
+  const m = Math.floor(min % 60);
+  return h + ':' + String(m).padStart(2, '0');
+}
+
+// CTL-based future fitness projection
+function _ctlFitnessGain(weeksToRace) {
+  const wellness = intervalsCtx?.wellness || [];
+  const buildWeeks = Math.max(0, weeksToRace - 3);
+  if (!wellness.length || buildWeeks <= 0) return { factor: 1.0, buildWeeks: Math.round(buildWeeks), ctlGain: 0 };
+  const latestCTL = wellness[wellness.length - 1]?.ctl;
+  const w4Ago = wellness.length >= 28 ? wellness[wellness.length - 28] : wellness[0];
+  const oldCTL = w4Ago?.ctl;
+  let ctlGrowthPerWeek = 1.5;
+  if (latestCTL && oldCTL && Math.abs(latestCTL - oldCTL) > 0.5) {
+    const wks = Math.max(1, (wellness.length - 1) / 7);
+    ctlGrowthPerWeek = (latestCTL - oldCTL) / wks;
+  }
+  const expectedCTLGain = Math.min(buildWeeks * Math.min(Math.max(ctlGrowthPerWeek, 0.5), 3), 20);
+  return {
+    factor: 1 - expectedCTLGain * 0.003,
+    buildWeeks: Math.round(buildWeeks),
+    ctlGain: Math.round(expectedCTLGain)
+  };
+}
+
+// ── Source 1: Strava pace_hr_correlatie (stream-level, most accurate) ──
+// Returns { threshPaceSec, punten, src } or null
+function _fromStravaCorr() {
+  const corr = stravaAnalysis?.data?.pace_hr_correlatie;
+  if (!corr?.length) return null;
+  const { restHR, hrReserve, drempel } = _getHrParams();
+  const BUCKET_SEC = {
+    '<4:30/km': 255, '4:30–5:00/km': 285, '5:00–5:30/km': 315,
+    '5:30–6:00/km': 345, '6:00–6:30/km': 375, '>6:30/km': 415,
+  };
+  const points = corr
+    .filter(b => b.avg_hr && b.count >= 15 && BUCKET_SEC[b.label] != null)
+    .map(b => ({ hr: b.avg_hr, sec: BUCKET_SEC[b.label], count: b.count }))
+    .sort((a, b) => a.hr - b.hr);
+  if (points.length < 2) return null;
+  // Fit regression on (HRR%, sec/km) from the bucket centroids
+  const pts = points.map(p => {
+    const hrrPct = (p.hr - restHR) / hrReserve * 100;
+    return [hrrPct, p.sec];
+  });
+  const n = pts.length;
+  const sX = pts.reduce((s,p)=>s+p[0],0);
+  const sY = pts.reduce((s,p)=>s+p[1],0);
+  const sXY = pts.reduce((s,p)=>s+p[0]*p[1],0);
+  const sXX = pts.reduce((s,p)=>s+p[0]*p[0],0);
+  const denom = n*sXX - sX*sX;
+  if (!denom) return null;
+  const b = (n*sXY - sX*sY) / denom;
   const a = (sY - b*sX) / n;
   const marathonHRR = (drempel - restHR) / hrReserve * 100;
-  const pace = (a + b * marathonHRR) * 1.05;
-  const marathonMin = pace * 42.195 / 60;
-  const h = Math.floor(marathonMin / 60);
-  const m = Math.floor(marathonMin % 60);
-  return { time: h + ':' + String(m).padStart(2,'0'), min: marathonMin, punten: punten.length };
+  const threshPaceSec = a + b * marathonHRR;
+  if (threshPaceSec < 200 || threshPaceSec > 600) return null;
+  const totalCount = points.reduce((s,p)=>s+p.count,0);
+  return { threshPaceSec, punten: totalCount, buckets: points.length, src: 'Strava stream' };
+}
+
+// ── Source 2: Activity list (Strava direct or Intervals.icu) ──
+function _fromActivityList(runs) {
+  const { restHR, hrReserve, drempel } = _getHrParams();
+  const reg = _paceHrRegression(runs);
+  if (!reg) return null;
+  const marathonHRR = (drempel - restHR) / hrReserve * 100;
+  const threshPaceSec = reg.a + reg.b * marathonHRR;
+  if (threshPaceSec < 200 || threshPaceSec > 600) return null;
+  return { threshPaceSec, punten: reg.punten, src: '' };
+}
+
+// ── Public API ──
+// Returns null or { nuMin, nuTime, oktMin, oktTime, src, punten, ... }
+function computePrognoseData() {
+  const raceDate = new Date('2026-10-18');
+  const weeksToRace = Math.max(0, (raceDate - new Date()) / (7 * 86400000));
+  const { buildWeeks, factor: ctlFactor, ctlGain } = _ctlFitnessGain(weeksToRace);
+
+  // Pick best available source
+  let base = _fromStravaCorr();
+  let srcLabel = base ? 'Strava GPS-stream' : null;
+
+  if (!base) {
+    // Try Strava activities if fetched
+    const stravaRuns = (_stravaActivities || []);
+    if (stravaRuns.length >= 5) {
+      base = _fromActivityList(stravaRuns);
+      if (base) srcLabel = 'Strava (' + stravaRuns.length + ' runs)';
+    }
+  }
+  if (!base) {
+    // Fall back to Intervals.icu activities
+    const acts = (intervalsCtx?.activities || [])
+      .filter(a => (a.type === 'Run' || a.sport_type === 'Run') && a.average_heartrate && a.distance && a.moving_time);
+    base = _fromActivityList(acts);
+    if (base) srcLabel = 'Intervals.icu (' + acts.length + ' runs)';
+  }
+  if (!base) return null;
+
+  // "Nu" — training pace + standard marathon vs threshold factor (no taper)
+  const nuPace = base.threshPaceSec * 1.05;
+  const nuMin = nuPace * 42.195 / 60;
+
+  // "18 oktober" — taper correction + future CTL growth
+  const racePace = base.threshPaceSec * 0.93 * 1.04 * ctlFactor;
+  const oktMin = racePace * 42.195 / 60;
+
+  return {
+    nuTime: _minToTime(nuMin), nuMin,
+    oktTime: _minToTime(oktMin), oktMin,
+    src: srcLabel,
+    punten: base.punten,
+    buckets: base.buckets || null,
+    weeksToRace: Math.round(weeksToRace),
+    buildWeeks,
+    ctlGain,
+  };
+}
+
+// Kept for system prompt usage
+function computeMarathonPotentie() {
+  const data = computePrognoseData();
+  if (!data) return null;
+  return { time: data.nuTime, min: data.nuMin, punten: data.punten };
 }
 
 function computeRacePrognose() {
-  // Forward-looking race projection for 18 oktober — NOT "what she'd run today"
-  // Steps:
-  // 1. Same pace/HR regression to get threshold pace (from training data)
-  // 2. Apply race-day correction: tapered & rested runner goes 6-8% faster than
-  //    training pace estimates (which are collected under accumulated fatigue)
-  // 3. Apply future CTL growth: fitness still builds for ~6 more weeks before taper
-  const acts = intervalsCtx?.activities || [];
-  const runs = acts.filter(a => a.type === 'Run' && a.average_heartrate && a.distance && a.moving_time).slice(0, 12);
-  if (runs.length < 3) return null;
-
-  const maxHR = parseInt(CONFIG.maxHR) || 185;
-  const wellness = intervalsCtx?.wellness || [];
-  const well7 = wellness.slice(-7);
-  const restHRSamples = well7.map(w => w.restingHR).filter(Boolean);
-  const restHR = restHRSamples.length ? Math.round(restHRSamples.reduce((s,v)=>s+v,0)/restHRSamples.length) : 50;
-  const hrReserve = maxHR - restHR;
-  const drempel = maxHR - 14;
-
-  const punten = [];
-  for (const r of runs) {
-    const hr = r.average_heartrate;
-    if (hr < 130 || hr > drempel + 5) continue;
-    const distKm = r.distance / 1000;
-    if (distKm < 5) continue;
-    const pace = r.moving_time / distKm;
-    const hrrPct = (hr - restHR) / hrReserve * 100;
-    punten.push([hrrPct, pace]);
-  }
-  if (punten.length < 3) return null;
-
-  const n = punten.length;
-  const sX = punten.reduce((s,p)=>s+p[0],0);
-  const sY = punten.reduce((s,p)=>s+p[1],0);
-  const sXY = punten.reduce((s,p)=>s+p[0]*p[1],0);
-  const sXX = punten.reduce((s,p)=>s+p[0]*p[0],0);
-  const b = (n*sXY - sX*sY) / (n*sXX - sX*sX);
-  const a = (sY - b*sX) / n;
-
-  const marathonHRR = (drempel - restHR) / hrReserve * 100;
-  // Pace at threshold HR from training data (under accumulated fatigue)
-  const trainingThreshPace = a + b * marathonHRR;
-
-  // Race-day factor: 3 weeks taper + fresh legs = ~7% faster than fatigued training estimate
-  const raceDayFactor = 0.93;
-  // Marathon is ~4% slower than threshold (Daniels/Billat at race conditions, not training)
-  const marathonFactor = 1.04;
-  const baseRacePace = trainingThreshPace * raceDayFactor * marathonFactor;
-
-  // CTL-based future fitness gain
-  const raceDate = new Date('2026-10-18');
-  const today = new Date();
-  const weeksToRace = Math.max(0, (raceDate - today) / (7 * 86400000));
-  // Taper starts ~3 weeks before race — only build weeks count for CTL gain
-  const buildWeeks = Math.max(0, weeksToRace - 3);
-
-  let fitnessGainFactor = 1.0;
-  if (wellness.length >= 2 && buildWeeks > 0) {
-    const latestCTL = wellness[wellness.length - 1]?.ctl;
-    const w4Ago = wellness.length >= 28 ? wellness[wellness.length - 28] : wellness[0];
-    const oldCTL = w4Ago?.ctl;
-    if (latestCTL && oldCTL && latestCTL !== oldCTL) {
-      const weeksSinceSample = (wellness.length - 1 - (wellness.length >= 28 ? wellness.length - 28 : 0)) / 7;
-      const ctlGrowthPerWeek = (latestCTL - oldCTL) / Math.max(1, weeksSinceSample);
-      // Expected CTL gain over remaining build weeks (cap at 3/week and total 20 pts)
-      const expectedCTLGain = Math.min(buildWeeks * Math.min(Math.max(ctlGrowthPerWeek, 0.5), 3), 20);
-      // ~0.3% race performance improvement per CTL point gained (conservative, literature-based)
-      fitnessGainFactor = 1 - expectedCTLGain * 0.003;
-    } else {
-      // No growth data: assume 1.5 CTL/week (modest but typical marathon build)
-      const expectedCTLGain = Math.min(buildWeeks * 1.5, 20);
-      fitnessGainFactor = 1 - expectedCTLGain * 0.003;
-    }
-  }
-
-  const racePace = baseRacePace * fitnessGainFactor;
-  const marathonMin = racePace * 42.195 / 60;
-  const h = Math.floor(marathonMin / 60);
-  const m = Math.floor(marathonMin % 60);
-  return {
-    time: h + ':' + String(m).padStart(2, '0'),
-    min: marathonMin,
-    punten: punten.length,
-    weeksToRace: Math.round(weeksToRace),
-    buildWeeks: Math.round(buildWeeks)
-  };
+  const data = computePrognoseData();
+  if (!data) return null;
+  return { time: data.oktTime, min: data.oktMin, punten: data.punten, weeksToRace: data.weeksToRace, buildWeeks: data.buildWeeks };
 }
 
 /* ═══════════════════════════════════════════
@@ -4562,6 +4635,27 @@ async function checkStravaConnection() {
       updateStravaStatus();
     }
   } catch(e) { updateStravaStatus(); }
+}
+
+// Fetch all runs from last 6 months from Strava API (one call, up to 100 activities).
+// Caches result in _stravaActivities.
+async function fetchStravaActivities() {
+  if (_stravaActivities !== null) return _stravaActivities;
+  if (!_stravaAccessToken) { _stravaActivities = []; return []; }
+  try {
+    const sixMonthsAgo = Math.floor((Date.now() - 180 * 86400000) / 1000);
+    const r = await fetch(
+      'https://www.strava.com/api/v3/athlete/activities?per_page=100&after=' + sixMonthsAgo,
+      { headers: { 'Authorization': 'Bearer ' + _stravaAccessToken } }
+    );
+    if (!r.ok) { _stravaActivities = []; return []; }
+    const all = await r.json();
+    _stravaActivities = (Array.isArray(all) ? all : []).filter(a =>
+      (a.type === 'Run' || a.sport_type === 'Run') &&
+      a.average_heartrate && a.distance > 4000 && a.moving_time
+    );
+    return _stravaActivities;
+  } catch(e) { _stravaActivities = []; return []; }
 }
 
 async function refreshStravaAnalysis(showFeedback = true) {

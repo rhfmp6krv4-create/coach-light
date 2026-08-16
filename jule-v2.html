@@ -913,11 +913,27 @@ h3 { font-size: 16px; font-weight: 600; }
 }
 /* ─── MARATHON POTENTIE ─── */
 .home-pot-card {
-  margin: 8px 16px 0; padding: 14px 16px;
+  margin: 8px 16px 0;
   background: var(--surface); border: 1px solid var(--border2);
-  border-radius: var(--r); display: flex; align-items: center;
-  justify-content: space-between; display: none;
+  border-radius: var(--r); display: none; cursor: pointer;
+  user-select: none;
 }
+.home-pot-card:hover { border-color: rgba(100,140,255,.22); }
+.home-pot-summary {
+  padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+}
+.home-pot-detail {
+  border-top: 1px solid var(--border);
+  padding: 14px 16px; display: none; flex-direction: column; gap: 14px;
+}
+.home-pot-detail.open { display: flex; }
+.pot-row { display: flex; flex-direction: column; gap: 4px; }
+.pot-row-header { display: flex; align-items: baseline; gap: 10px; }
+.pot-row-time { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pot-row-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text2); }
+.pot-row-explain { font-size: 12px; color: var(--text2); line-height: 1.6; padding-left: 2px; }
+.pot-row-factors { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.pot-factor { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
 
 /* ─── WEER WIDGET ─── */
 .home-weather {
@@ -1161,14 +1177,26 @@ body.tab-keuzestress .ks-fab { display: none !important; }
             <div id="home-done-content" style="font-size:13px;color:var(--text);line-height:1.5"></div>
           </div>
 
-          <div class="home-pot-card" id="home-pot-card">
-            <div>
-              <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)">Race prognose</div>
-              <div style="font-size:26px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums" id="home-pot-time">—</div>
+          <div class="home-pot-card" id="home-pot-card" onclick="togglePotCard()">
+            <!-- Collapsed summary -->
+            <div class="home-pot-summary">
+              <div>
+                <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)">Race prognose</div>
+                <div style="font-size:26px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums" id="home-pot-time">—</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="text-align:right">
+                  <div style="font-size:11px;color:var(--text2)" id="home-pot-sub">18 oktober</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px" id="home-pot-runs"></div>
+                </div>
+                <svg id="home-pot-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.2" style="flex-shrink:0;transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
             </div>
-            <div style="text-align:right">
-              <div style="font-size:11px;color:var(--text2)" id="home-pot-sub">o.b.v. pace/HR data</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px" id="home-pot-runs"></div>
+            <!-- Expanded detail -->
+            <div class="home-pot-detail" id="home-pot-detail">
+              <div class="pot-row" id="pot-row-nu"></div>
+              <div style="height:1px;background:var(--border)"></div>
+              <div class="pot-row" id="pot-row-okt"></div>
             </div>
           </div>
 
@@ -2620,15 +2648,53 @@ function renderHomeTab() {
       el.className = 'stat-val ' + (v < 0.8 ? '' : v <= 1.3 ? 'good' : v <= 1.5 ? 'warn' : 'crit');
     }
 
-    // Race prognose — forward-looking to 18 oktober
-    const pot = computeRacePrognose();
+    // Race prognose — fill both current and forward-looking estimates
+    const potNu = computeMarathonPotentie();
+    const potOkt = computeRacePrognose();
     const potCard = document.getElementById('home-pot-card');
-    if (pot && potCard) {
-      document.getElementById('home-pot-time').textContent = pot.time;
-      document.getElementById('home-pot-time').style.color = pot.min < 240 ? 'var(--success)' : pot.min < 270 ? 'var(--warning)' : 'var(--text)';
-      document.getElementById('home-pot-sub').textContent = '18 oktober · incl. CTL-groei';
-      document.getElementById('home-pot-runs').textContent = pot.weeksToRace != null ? pot.weeksToRace + ' wkn te gaan' : '';
-      potCard.style.display = 'flex';
+    if ((potNu || potOkt) && potCard) {
+      const best = potOkt || potNu;
+      document.getElementById('home-pot-time').textContent = best.time;
+      document.getElementById('home-pot-time').style.color = best.min < 240 ? 'var(--success)' : best.min < 270 ? 'var(--warning)' : 'var(--text)';
+      document.getElementById('home-pot-sub').textContent = '18 oktober';
+      document.getElementById('home-pot-runs').textContent = potOkt?.weeksToRace != null ? potOkt.weeksToRace + ' wkn te gaan' : '';
+      potCard.style.display = 'block';
+
+      // Fill "Potentie nu" row
+      const rowNu = document.getElementById('pot-row-nu');
+      if (rowNu && potNu) {
+        const c = potNu.min < 240 ? 'var(--success)' : potNu.min < 270 ? 'var(--warning)' : 'var(--text)';
+        rowNu.innerHTML =
+          '<div class="pot-row-header">'
+          + '<span class="pot-row-time" style="color:' + c + '">' + potNu.time + '</span>'
+          + '<span class="pot-row-label">Potentie nu</span>'
+          + '</div>'
+          + '<div class="pot-row-explain">Berekend op basis van de pace/HR-verhouding van je laatste ' + (potNu.punten || '—') + ' trainingsruns. Via lineaire regressie wordt je drempeltempo geschat; het marathontempo ligt ~5% lager dan je drempel. Dit is je <em>huidige</em> capaciteit — met vermoeidheid van de trainingsbelasting inbegrepen.</div>'
+          + '<div class="pot-row-factors">'
+          + '<span class="pot-factor">pace/HR regressie</span>'
+          + '<span class="pot-factor">drempeltempo − 5%</span>'
+          + '<span class="pot-factor">geen taperfactor</span>'
+          + '</div>';
+      }
+
+      // Fill "Potentie 18 oktober" row
+      const rowOkt = document.getElementById('pot-row-okt');
+      if (rowOkt && potOkt) {
+        const c = potOkt.min < 240 ? 'var(--success)' : potOkt.min < 270 ? 'var(--warning)' : 'var(--text)';
+        const wkn = potOkt.buildWeeks || 0;
+        rowOkt.innerHTML =
+          '<div class="pot-row-header">'
+          + '<span class="pot-row-time" style="color:' + c + '">' + potOkt.time + '</span>'
+          + '<span class="pot-row-label">Prognose 18 oktober</span>'
+          + '</div>'
+          + '<div class="pot-row-explain">Dezelfde basis als "Potentie nu", maar gecorrigeerd voor wedstrijdomstandigheden en toekomstige fitnessgroei. Op racedag ben je uitgerust na 3 weken taper (+7% sneller dan trainingsdata suggereert). Daarnaast groeien je CTL en aëroob vermogen de komende ' + wkn + ' opbouwweken nog door; elke gewonnen CTL-punt telt voor ~0,3% prestatiewinst.</div>'
+          + '<div class="pot-row-factors">'
+          + '<span class="pot-factor">taper +7%</span>'
+          + '<span class="pot-factor">marathon vs drempel −4%</span>'
+          + '<span class="pot-factor">CTL-groei ' + wkn + ' wkn</span>'
+          + '<span class="pot-factor">0,3%/CTL-punt</span>'
+          + '</div>';
+      }
     }
   }
 
@@ -2682,6 +2748,14 @@ function renderHomeTab() {
   }
 
   generateHomeInsight();
+}
+
+function togglePotCard() {
+  const detail = document.getElementById('home-pot-detail');
+  const chevron = document.getElementById('home-pot-chevron');
+  if (!detail) return;
+  const open = detail.classList.toggle('open');
+  if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
 function toggleHomeWeek() {

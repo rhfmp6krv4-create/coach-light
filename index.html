@@ -319,6 +319,20 @@ body {
 .acwr-stat-item .val { font-family: 'DM Serif Display', serif; font-size: 18px; font-weight: 600; color: var(--ink); }
 .acwr-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .acwr-legend span { font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 4px; }
+
+/* Marathonpotentieel card */
+#pot-card { display: none; background: var(--sand); border-bottom: 1px solid var(--border); padding: 14px 16px; flex-shrink: 0; }
+#pot-card.visible { display: block; }
+.pot-card-lbl { font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; }
+.pot-card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pot-col { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.pot-col-lbl { font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
+.pot-col-time { font-family: 'DM Serif Display', serif; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
+.pot-col-sub { font-size: 10px; color: var(--ink-3); margin-top: 2px; font-family: 'DM Mono', monospace; line-height: 1.4; }
+.pot-col.green { border-color: #bbf7d0; background: #f0fdf4; }
+.pot-col.amber { border-color: #fde68a; background: #fffbeb; }
+.pot-card-src { font-size: 9px; color: var(--ink-3); margin-top: 10px; font-family: 'DM Mono', monospace; }
+
 .header-left { display: flex; flex-direction: column; }
 .header-title {
   font-family: 'DM Serif Display', serif;
@@ -768,6 +782,29 @@ body {
       </div>
     </div>
     <div id="acwr-chart-wrap"></div>
+  </div>
+
+  <!-- Marathonpotentieel — best-of-both prediction (GPS-stream primary + VDOT cross-check + weight scenarios) -->
+  <div id="pot-card">
+    <div class="pot-card-lbl">Marathonpotentieel</div>
+    <div class="pot-card-grid">
+      <div class="pot-col" id="pot-col-nu">
+        <div class="pot-col-lbl">Nu</div>
+        <div class="pot-col-time" id="pot-nu-time">—</div>
+        <div class="pot-col-sub" id="pot-nu-sub"></div>
+      </div>
+      <div class="pot-col" id="pot-col-okt">
+        <div class="pot-col-lbl">18 okt</div>
+        <div class="pot-col-time" id="pot-okt-time">—</div>
+        <div class="pot-col-sub" id="pot-okt-sub"></div>
+      </div>
+      <div class="pot-col" id="pot-col-extra">
+        <div class="pot-col-lbl" id="pot-extra-lbl">18 okt · doel</div>
+        <div class="pot-col-time" id="pot-extra-time">—</div>
+        <div class="pot-col-sub" id="pot-extra-sub"></div>
+      </div>
+    </div>
+    <div class="pot-card-src" id="pot-src"></div>
   </div>
 
   <div class="messages" id="messages">
@@ -1663,34 +1700,61 @@ function updateCountdown() {
 updateCountdown();
 setInterval(updateCountdown, 60000);
 
+// ── VDOT helpers (Daniels & Gilbert) ──
+// Standard Daniels VDOT table: VDOT → total marathon seconds
+function _vdotToMarathonSec(vdot) {
+  const tbl = [[30,20038],[35,17357],[40,15843],[45,14243],[50,13008],[55,12011],[60,11181],[65,10463],[70,9840],[75,9288],[80,8794]];
+  if (vdot <= tbl[0][0]) return tbl[0][1];
+  if (vdot >= tbl[tbl.length-1][0]) return tbl[tbl.length-1][1];
+  for (let i = 0; i < tbl.length-1; i++) {
+    const [v0,t0] = tbl[i], [v1,t1] = tbl[i+1];
+    if (vdot >= v0 && vdot <= v1) return t0 + (vdot-v0)/(v1-v0) * (t1-t0);
+  }
+  return null;
+}
+// Training-derived VDOT from threshold pace (more accurate than Garmin's watch estimate)
+// Threshold = 88% VO2max (Daniels). Uses Daniels VO2-cost formula.
+function _vdotFromDrempelSec(drempelSec) {
+  const v = 1000 / drempelSec * 60; // m/min
+  const vo2 = 0.000104 * v * v + 0.182258 * v - 4.6;
+  return vo2 / 0.88;
+}
+
 // ── RACE PROGNOSE WIDGET ──
 // Combined method: Method A = GPS-stream interpolation (zone-aware, no forced linearity)
 //                  Method B = linear regression on activity list (fallback)
 // Forward-looking: taper ×0.94 + CTL growth to race date
+// Weight scenarios: measured weight (wellness) vs profile target weight
 function updatePotentieWidget(ctl, latestWellness) {
   const raceDate = new Date('2026-10-18');
   const weeksToRace = Math.max(0, (raceDate - new Date()) / (7 * 86400000));
 
-  // CTL growth projection
-  const buildWeeks = Math.min(Math.round(weeksToRace) - 3, Math.round(weeksToRace * 0.75));
-  const ctlNow = ctl || 50;
+  // CTL growth: exclude taper weeks (last 3 weeks before race)
+  const buildWeeks = Math.max(0, Math.round(weeksToRace) - 3);
   const ctlGain = Math.round(Math.min(buildWeeks * 1.5, 15));
-  const ctlFactor = 1 - (ctlGain * 0.003);  // 0.3% per CTL point (faster = smaller factor)
+  const ctlFactor = 1 - ctlGain * 0.003; // 0.3% per CTL point faster
 
-  let nuPaceSec = null, oktPaceSec = null, subLabel = 'nu';
+  let nuPaceSec = null, srcLabel = null, vdotPaceSec = null;
 
-  // Method A: Strava GPS-stream interpolation via computeTempoInzicht (best data)
+  // ── Method A: GPS-stream (zone-aware interpolation — primary, best source) ──
   const corrData = stravaAnalysis?.data?.pace_hr_correlatie;
   if (corrData?.length) {
     const inzicht = computeTempoInzicht(corrData, MEM.zones);
     if (inzicht?.marathonTempo) {
       const [mn, sc] = inzicht.marathonTempo.split(':').map(Number);
       nuPaceSec = mn * 60 + (sc || 0);
-      subLabel = 'GPS-stream';
+      srcLabel = 'Strava GPS-stream · interpolatie (zone-bewust)';
+    }
+    // VDOT cross-check: derive training VDOT from drempelTempo (more accurate than watch estimate)
+    if (inzicht?.drempelTempo) {
+      const [dm, ds] = inzicht.drempelTempo.split(':').map(Number);
+      const vdot = _vdotFromDrempelSec(dm * 60 + (ds || 0));
+      const vdotTotal = _vdotToMarathonSec(vdot);
+      if (vdotTotal) vdotPaceSec = vdotTotal / 42.195; // sec/km
     }
   }
 
-  // Method B: linear regression on recent Intervals.icu runs (fallback)
+  // ── Method B: linear regression on Intervals.icu runs (fallback) ──
   if (!nuPaceSec) {
     const maxHR = parseInt(CONFIG.maxHR) || 185;
     const well7 = (intervalsCtx?.wellness || []).slice(-7);
@@ -1703,9 +1767,7 @@ function updatePotentieWidget(ctl, latestWellness) {
     );
     const pts = runs.map(r => {
       const distKm = r.distance / 1000;
-      const pace = r.moving_time / distKm;
-      const hrrPct = (r.average_heartrate - rustHR) / hrReserve * 100;
-      return [hrrPct, pace];
+      return [(r.average_heartrate - rustHR) / hrReserve * 100, r.moving_time / distKm];
     }).filter(p => p[0] >= 0 && p[0] <= 105);
     if (pts.length >= 3) {
       const n = pts.length;
@@ -1713,33 +1775,92 @@ function updatePotentieWidget(ctl, latestWellness) {
       const sXY = pts.reduce((s,p)=>s+p[0]*p[1],0), sXX = pts.reduce((s,p)=>s+p[0]*p[0],0);
       const b = (n*sXY - sX*sY) / (n*sXX - sX*sX);
       const a = (sY - b*sX) / n;
-      const marathonHRR = (drempel - 5 - rustHR) / hrReserve * 100;
-      nuPaceSec = (a + b * marathonHRR) * 1.05;
-      subLabel = runs.length + ' runs';
+      nuPaceSec = (a + b * ((drempel - 5 - rustHR) / hrReserve * 100)) * 1.05;
+      srcLabel = runs.length + ' runs · lineaire regressie (drempel × 1,05)';
     }
   }
 
   if (!nuPaceSec) return;
 
-  // "18 oktober": taper +6% + CTL growth
-  oktPaceSec = nuPaceSec * 0.94 * ctlFactor;
-
   function fmtTime(paceSec) {
-    const totalMin = paceSec * 42.195 / 60;
-    const h = Math.floor(totalMin / 60);
-    const m = Math.floor(totalMin % 60);
-    return h + ':' + String(m).padStart(2, '0');
+    const tot = paceSec * 42.195 / 60;
+    const h = Math.floor(tot / 60), m = Math.floor(tot % 60), s = Math.round((tot % 1) * 60);
+    return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+  function colorCls(paceSec) {
+    const min = paceSec * 42.195 / 60;
+    return min < 240 ? 'green' : min < 300 ? 'amber' : '';
   }
 
+  const oktPaceSec = nuPaceSec * 0.94 * ctlFactor;
+
+  // Weight scenarios: measured wellness weight vs profile target weight
+  const measuredW = latestWellness?.weight;
+  const targetW = parseFloat(CONFIG.gewicht) || null;
+  const hasWeightScenario = measuredW && targetW && targetW < measuredW - 0.5;
+  // Weight effect: 1% body weight reduction → ~0.5% performance improvement (Daniels/Noakes)
+  const weightFactor = hasWeightScenario ? (1 - ((measuredW - targetW) / measuredW) * 0.5) : null;
+  const doelPaceSec = weightFactor ? oktPaceSec * weightFactor : null;
+
+  // ── Widget pill (compact) ──
   const potEl = document.getElementById('w-potentie');
   const valEl = document.getElementById('w-pot-val');
   const subEl = document.getElementById('w-pot-sub');
-  if (!valEl || !subEl || !potEl) return;
-  valEl.textContent = fmtTime(oktPaceSec);
-  subEl.textContent = '18 okt · ' + subLabel;
-  potEl.title = 'Nu: ' + fmtTime(nuPaceSec) + ' · taper ×0,94 · +' + ctlGain + ' CTL';
-  const oktMin = oktPaceSec * 42.195 / 60;
-  potEl.className = 'widget-pill ' + (oktMin < 240 ? 'green' : oktMin < 300 ? 'amber' : '');
+  if (valEl) valEl.textContent = fmtTime(oktPaceSec);
+  if (subEl) subEl.textContent = '18 okt' + (hasWeightScenario ? ' · ' + Math.round(measuredW) + ' kg' : '');
+  if (potEl) potEl.className = 'widget-pill ' + colorCls(oktPaceSec);
+
+  // ── Detailed card ──
+  const potCard = document.getElementById('pot-card');
+  if (!potCard) return;
+  potCard.classList.add('visible');
+
+  // NU column
+  const nuCol = document.getElementById('pot-col-nu');
+  document.getElementById('pot-nu-time').textContent = fmtTime(nuPaceSec);
+  document.getElementById('pot-nu-sub').textContent = 'onder trainingsbelasting';
+  if (nuCol) nuCol.className = 'pot-col ' + colorCls(nuPaceSec);
+
+  // 18 OKT column
+  const oktCol = document.getElementById('pot-col-okt');
+  document.getElementById('pot-okt-time').textContent = fmtTime(oktPaceSec);
+  document.getElementById('pot-okt-sub').textContent =
+    'taper +6%' + (ctlGain > 0 ? ' · +' + ctlGain + ' CTL' : '') +
+    (hasWeightScenario ? ' · ' + Math.round(measuredW) + ' kg' : '');
+  if (oktCol) oktCol.className = 'pot-col ' + colorCls(oktPaceSec);
+
+  // Extra column: weight target scenario OR VDOT cross-check
+  const extraCol = document.getElementById('pot-col-extra');
+  const extraLbl = document.getElementById('pot-extra-lbl');
+  const extraTime = document.getElementById('pot-extra-time');
+  const extraSub = document.getElementById('pot-extra-sub');
+  if (hasWeightScenario && doelPaceSec) {
+    if (extraLbl) extraLbl.textContent = '18 okt · ' + Math.round(targetW) + ' kg';
+    if (extraTime) extraTime.textContent = fmtTime(doelPaceSec);
+    if (extraSub) extraSub.textContent = '-' + (measuredW - targetW).toFixed(1) + ' kg · 1%↓=0,5% sneller';
+    if (extraCol) extraCol.className = 'pot-col ' + colorCls(doelPaceSec);
+  } else if (vdotPaceSec) {
+    const vdotOktSec = vdotPaceSec * 0.94 * ctlFactor;
+    const diffMin = Math.round(Math.abs(oktPaceSec - vdotPaceSec) * 42.195 / 60);
+    if (extraLbl) extraLbl.textContent = '18 okt · VDOT check';
+    if (extraTime) extraTime.textContent = fmtTime(vdotOktSec);
+    if (extraSub) extraSub.textContent = 'via drempelTempo · ±' + diffMin + ' min verschil';
+    if (extraCol) extraCol.className = 'pot-col ' + colorCls(vdotOktSec);
+  } else {
+    if (extraCol) extraCol.style.display = 'none';
+  }
+
+  // Source footer
+  const srcEl = document.getElementById('pot-src');
+  if (srcEl) {
+    let txt = srcLabel || '—';
+    if (vdotPaceSec) {
+      const diffMin = Math.round(Math.abs(nuPaceSec - vdotPaceSec) * 42.195 / 60);
+      const conf = diffMin <= 5 ? '★★★ hoge overeenstemming' : diffMin <= 10 ? '★★ redelijke overeenstemming' : '★ methoden verschillen';
+      txt += ' · VDOT controle: ' + conf + ' (' + diffMin + ' min)';
+    }
+    srcEl.textContent = txt;
+  }
 }
 
 // ── WIDGETS ──

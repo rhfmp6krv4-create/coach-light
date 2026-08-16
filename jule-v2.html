@@ -2778,6 +2778,20 @@ function renderPotCard() {
   const rowOkt = document.getElementById('pot-row-okt');
   if (rowOkt) {
     const c = data.oktMin < 240 ? 'var(--success)' : data.oktMin < 270 ? 'var(--warning)' : 'var(--text)';
+    // VDOT cross-check block (if available)
+    let vdotBlock = '';
+    if (data.vdotLabel && data.vdotDiffMin != null) {
+      const vdotOktMin = data.vdotPaceSec * 0.94 * (1 - data.ctlGain * 0.003) * 42.195 / 60;
+      const vdotOktTime = _minToTime(vdotOktMin);
+      const confColor = data.vdotConf === '★★★' ? 'var(--success)' : data.vdotConf === '★★' ? 'var(--warning)' : 'var(--muted)';
+      vdotBlock = '<div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">'
+        + '<div style="font-size:10px;font-weight:600;color:var(--text2);margin-bottom:4px">VDOT controle (Daniels)</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        + '<span style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums">' + vdotOktTime + '</span>'
+        + '<span style="font-size:11px;color:var(--text2)">' + data.vdotLabel + '</span>'
+        + '<span style="font-size:11px;font-weight:600;color:' + confColor + '">' + data.vdotConf + ' (±' + data.vdotDiffMin + ' min)</span>'
+        + '</div></div>';
+    }
     rowOkt.innerHTML =
       '<div class="pot-row-header">'
       + '<span class="pot-row-time" style="color:' + c + '">' + data.oktTime + '</span>'
@@ -2789,7 +2803,8 @@ function renderPotCard() {
       + '<div class="pot-row-factors">'
       + '<span class="pot-factor">taper ×0,94</span>'
       + '<span class="pot-factor">+' + data.ctlGain + ' CTL over ' + data.buildWeeks + ' wkn</span>'
-      + '</div>';
+      + '</div>'
+      + vdotBlock;
   }
 }
 
@@ -4499,6 +4514,26 @@ function _minToTime(min) {
   return h + ':' + String(m).padStart(2, '0');
 }
 
+// VDOT helpers (Daniels & Gilbert)
+// Standard Daniels table: VDOT → total marathon seconds
+function _vdotToMarathonSec(vdot) {
+  const tbl = [[30,20038],[35,17357],[40,15843],[45,14243],[50,13008],[55,12011],[60,11181],[65,10463],[70,9840],[75,9288],[80,8794]];
+  if (vdot <= tbl[0][0]) return tbl[0][1];
+  if (vdot >= tbl[tbl.length-1][0]) return tbl[tbl.length-1][1];
+  for (let i = 0; i < tbl.length-1; i++) {
+    const [v0,t0] = tbl[i], [v1,t1] = tbl[i+1];
+    if (vdot >= v0 && vdot <= v1) return t0 + (vdot-v0)/(v1-v0) * (t1-t0);
+  }
+  return null;
+}
+// Training-derived VDOT from threshold pace (more accurate than watch estimate)
+// Threshold = 88% VO2max (Daniels). Uses Daniels VO2-cost formula (v in m/min).
+function _vdotFromDrempelSec(drempelSec) {
+  const v = 1000 / drempelSec * 60;
+  const vo2 = 0.000104 * v * v + 0.182258 * v - 4.6;
+  return vo2 / 0.88;
+}
+
 // CTL-based future fitness projection
 function _ctlFitnessGain(weeksToRace) {
   const wellness = intervalsCtx?.wellness || [];
@@ -4568,16 +4603,15 @@ function _fromActivityList(runs) {
 }
 
 // ── Public API ──
-// Returns null or { nuMin, nuTime, oktMin, oktTime, src, punten, method, ... }
+// Returns null or { nuMin, nuTime, oktMin, oktTime, src, punten, method, vdot*, ... }
 function computePrognoseData() {
   const raceDate = new Date('2026-10-18');
   const weeksToRace = Math.max(0, (raceDate - new Date()) / (7 * 86400000));
   const { buildWeeks, factor: ctlFactor, ctlGain } = _ctlFitnessGain(weeksToRace);
 
-  // ── Method A: Strava GPS-stream interpolation (best — no forced linearity, zone-aware) ──
-  // Uses Rob's proven computeTempoInzicht() which linearly interpolates between bucket
-  // centroids to find the exact pace at zone-based marathon HR — no extrapolation needed.
+  // ── Method A: Strava GPS-stream interpolation (primary — zone-aware, no forced linearity) ──
   let nuPaceSec = null, srcLabel = null, punten = null, buckets = null, methodLabel = null;
+  let vdotPaceSec = null, vdotLabel = null; // VDOT cross-check
 
   const corrData = stravaAnalysis?.data?.pace_hr_correlatie;
   if (corrData?.length) {
@@ -4589,6 +4623,16 @@ function computePrognoseData() {
       buckets = corrData.filter(b => (b.count || 0) >= 15).length;
       srcLabel = 'Strava GPS-stream';
       methodLabel = 'interpolatie (zone-bewust)';
+    }
+    // VDOT cross-check from drempelTempo (training-derived VDOT, more accurate than watch)
+    if (inzicht?.drempelTempo) {
+      const [dm, ds] = inzicht.drempelTempo.split(':').map(Number);
+      const vdot = _vdotFromDrempelSec(dm * 60 + (ds || 0));
+      const vdotTotal = _vdotToMarathonSec(vdot);
+      if (vdotTotal) {
+        vdotPaceSec = vdotTotal / 42.195;
+        vdotLabel = 'drempelTempo → VDOT ' + Math.round(vdot) + ' (Daniels-tabel)';
+      }
     }
   }
 
@@ -4612,20 +4656,21 @@ function computePrognoseData() {
   if (!nuPaceSec) return null;
 
   const nuMin = nuPaceSec * 42.195 / 60;
-
-  // ── "18 oktober": layer taper + CTL growth on top of current estimate ──
-  // nuPaceSec = current training pace (collected under accumulated fatigue)
-  // Taper: 3 weken afbouw → 6% sneller (vers vs vermoeid)
-  // CTL-groei: opgebouwde fitnesswinst over resterende opbouwweken
   const oktPaceSec = nuPaceSec * 0.94 * ctlFactor;
   const oktMin = oktPaceSec * 42.195 / 60;
+
+  // VDOT agreement signal
+  const vdotDiffMin = vdotPaceSec ? Math.round(Math.abs(nuPaceSec - vdotPaceSec) * 42.195 / 60) : null;
+  const vdotConf = vdotDiffMin != null
+    ? (vdotDiffMin <= 5 ? '★★★' : vdotDiffMin <= 10 ? '★★' : '★')
+    : null;
 
   return {
     nuTime: _minToTime(nuMin), nuMin,
     oktTime: _minToTime(oktMin), oktMin,
     src: srcLabel, punten, buckets, methodLabel,
-    weeksToRace: Math.round(weeksToRace),
-    buildWeeks, ctlGain,
+    weeksToRace: Math.round(weeksToRace), buildWeeks, ctlGain,
+    vdotPaceSec, vdotLabel, vdotDiffMin, vdotConf,
   };
 }
 

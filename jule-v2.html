@@ -953,6 +953,31 @@ h3 { font-size: 16px; font-weight: 600; }
 .schoen-bar-fill { height:100%;border-radius:4px;transition:width .8s cubic-bezier(.16,1,.3,1) }
 .schoen-warn { display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:2px 6px;margin-top:6px }
 
+/* ─── KEUZESTRESS ─── */
+.ks-scroll { overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.ks-cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.ks-cat-header { padding: 14px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.ks-cat-name { font-weight: 600; font-size: 15px; flex: 1; min-width: 0; }
+.ks-cat-meta { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.ks-cat-body { padding: 0 16px 16px; border-top: 1px solid var(--border); }
+.ks-opt-row { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.ks-opt-row:last-of-type { border-bottom: none; }
+.ks-opt-name { font-weight: 600; font-size: 14px; }
+.ks-opt-prijs { color: var(--accent); font-size: 13px; font-weight: 600; margin-top: 2px; }
+.ks-opt-details { font-size: 12px; color: var(--text2); line-height: 1.5; margin-top: 3px; }
+.ks-chosen-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: rgba(52,211,153,.12); color: var(--success); border-radius: 4px; padding: 2px 7px; }
+.ks-advies-box { background: var(--surface2); border: 1px solid rgba(139,92,246,.25); border-radius: var(--r-sm); padding: 14px; font-size: 13px; line-height: 1.7; color: var(--text); margin-top: 12px; }
+.ks-add-btn { width: 100%; padding: 11px; background: none; border: 1px dashed var(--border2); border-radius: var(--r-sm); color: var(--text2); font-size: 13px; font-family: var(--font); cursor: pointer; margin-top: 10px; transition: border-color .15s, color .15s; }
+.ks-add-btn:hover { border-color: rgba(139,92,246,.5); color: #c4b5fd; }
+.ks-fab { position: fixed; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 12px); right: 16px; z-index: 90; display: none; }
+@media (max-width: 767px) { .ks-fab { display: flex; } }
+body.tab-keuzestress .ks-fab { display: none !important; }
+.ks-fab-btn { display: flex; align-items: center; gap: 6px; padding: 9px 14px; background: rgba(139,92,246,.2); border: 1px solid rgba(139,92,246,.5); border-radius: 24px; color: #c4b5fd; font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 4px 20px rgba(0,0,0,.4); transition: transform .12s; }
+.ks-fab-btn:active { transform: scale(.95); }
+.sidebar-tab[data-tab="keuzestress"] { color: #a78bfa; }
+.sidebar-tab[data-tab="keuzestress"].active { color: #c4b5fd; background: rgba(139,92,246,.15); }
+.sidebar-tab[data-tab="keuzestress"]:hover:not(.active) { background: rgba(139,92,246,.08); color: #c4b5fd; }
+
 /* ─── DESKTOP OVERRIDES ─── */
 @media (min-width: 768px) {
   #top-nav { padding: 0 24px; }
@@ -964,6 +989,7 @@ h3 { font-size: 16px; font-weight: 600; }
   #tab-kracht { padding: 0; }
   #tab-fysio { padding: 0; }
   #tab-materiaal { padding: 0; }
+  #tab-keuzestress { padding: 0; }
 }
 
 /* No-config overlay */
@@ -1061,6 +1087,10 @@ h3 { font-size: 16px; font-weight: 600; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
           Materiaal
         </button>
+        <button class="sidebar-tab" data-tab="keuzestress" onclick="switchTab('keuzestress')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+          Keuzestress?
+        </button>
         <!-- Progress bar — always above Chat, no layout shift -->
         <div class="sidebar-progress">
           <div class="sidebar-countdown">
@@ -1091,6 +1121,7 @@ h3 { font-size: 16px; font-weight: 600; }
         <button class="tab-btn" data-tab="kracht" onclick="switchTab('kracht')">Kracht</button>
         <button class="tab-btn" data-tab="fysio" onclick="switchTab('fysio')">Fysio</button>
         <button class="tab-btn" data-tab="materiaal" onclick="switchTab('materiaal')">Materiaal</button>
+        <button class="tab-btn" data-tab="keuzestress" onclick="switchTab('keuzestress')">Keuzestress?</button>
         <button class="tab-btn" data-tab="chat" onclick="switchTab('chat')">Chat</button>
       </div>
 
@@ -1533,6 +1564,13 @@ h3 { font-size: 16px; font-weight: 600; }
         </div>
       </div>
 
+      <!-- KEUZESTRESS TAB -->
+      <div id="tab-keuzestress" class="tab-content">
+        <div class="ks-scroll" id="ks-scroll">
+          <div style="padding:40px 0;text-align:center;color:var(--text2);font-size:13px">Laden…</div>
+        </div>
+      </div>
+
     </main>
   </div><!-- /below-nav -->
 
@@ -1563,6 +1601,11 @@ h3 { font-size: 16px; font-weight: 600; }
   </div>
 
 </div><!-- /app -->
+
+<!-- Keuzestress FAB (mobile only, hidden when on keuzestress tab) -->
+<div class="ks-fab">
+  <button class="ks-fab-btn" onclick="switchTab('keuzestress')">✦ Keuzestress?</button>
+</div>
 
 <!-- CHECK-IN MODAL -->
 <div id="ci-modal" onclick="if(event.target===this)this.style.display='none'">
@@ -1602,6 +1645,7 @@ let stravaAnalysis = null;
 let stravaCtx = null; // null | { connected: true, athlete_name: string }
 const STRAVA_CLIENT_ID = '260913';
 let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [], zones: null, voeding: null, kracht: null, blessures: null };
+let _keuzestress = null;
 let ciScore = 0;
 let messages = [];
 let isLoading = false;
@@ -1683,7 +1727,7 @@ function setStatus(s) {
    MEMORY
 ═══════════════════════════════════════════ */
 async function loadMem() {
-  const [macro, weeks, flags, zones, sa, chatH, voeding, kracht, blessures, sharedPlan, checkins] = await Promise.all([
+  const [macro, weeks, flags, zones, sa, chatH, voeding, kracht, blessures, sharedPlan, checkins, ksData] = await Promise.all([
     sbLoad('mem_macroplan'),
     sbLoad('mem_weekplannen'),
     sbLoad('mem_flags'),
@@ -1695,7 +1739,9 @@ async function loadMem() {
     sbLoad('mem_blessures'),
     sbLoad('weekplan_current'),
     sbLoad('mem_checkins'),
+    sbLoad('keuzestress'),
   ]);
+  _keuzestress = ksData || { categorieen: [] };
 
   MEM.macroplan = macro || null;
   MEM.weekplannen = weeks || [];
@@ -1746,6 +1792,7 @@ function switchTab(tab) {
   if (tab === 'kracht') renderKrachtTab();
   if (tab === 'fysio') renderFysioTab();
   if (tab === 'materiaal') renderMateriaalTab();
+  if (tab === 'keuzestress') renderKeuzestressTab();
   if (tab === 'chat') {
     const msgs = document.getElementById('coach-messages');
     if (msgs) requestAnimationFrame(() => msgs.scrollTop = msgs.scrollHeight);
@@ -3827,6 +3874,307 @@ async function renderMateriaalTab() {
 }
 
 let _gearForPrompt = [];
+
+/* ═══════════════════════════════════════════
+   KEUZESTRESS
+═══════════════════════════════════════════ */
+function ksSave() {
+  sbSave('keuzestress', _keuzestress);
+}
+
+function ksUid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// Importance weights for display & AI prompt
+const KS_GEWICHT_LABELS = { hoog: 'Heel belangrijk', middel: 'Belangrijk', laag: 'Minder belangrijk' };
+const KS_GEWICHT_COLORS = { hoog: 'var(--success)', middel: 'var(--warning)', laag: 'var(--muted)' };
+const KS_GEWICHT_CYCLE = ['hoog', 'middel', 'laag'];
+
+function renderKeuzestressTab() {
+  const el = document.getElementById('ks-scroll');
+  if (!el) return;
+  if (!_keuzestress) _keuzestress = { categorieen: [] };
+
+  const cats = _keuzestress.categorieen || [];
+  let html = '';
+
+  // Header
+  html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px">';
+  html += '<div><div style="font-size:18px;font-weight:700">Keuzestress?</div>';
+  html += '<div style="font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5">Voeg categorieën toe, geef aan wat belangrijk is, voer opties in en vraag AI-advies.</div></div>';
+  html += '<button onclick="ksAddCategorie()" style="flex-shrink:0;padding:8px 14px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.4);border-radius:20px;color:#c4b5fd;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;white-space:nowrap">+ Categorie</button>';
+  html += '</div>';
+
+  if (!cats.length) {
+    html += '<div style="text-align:center;padding:48px 0 32px;color:var(--muted);font-size:13px;line-height:1.7">Geen categorieën nog.<br><span style="color:var(--text2)">Voeg een categorie toe,<br>bijv. "Tent", "Rugzak" of "Racefiets".</span></div>';
+  } else {
+    cats.forEach((cat, ci) => {
+      const isOpen = cat._open !== false;
+      const nOpties = (cat.opties || []).length;
+      html += '<div class="ks-cat-card">';
+
+      // Header
+      html += '<div class="ks-cat-header" onclick="ksToggleCat(' + ci + ')">';
+      html += '<div class="ks-cat-name">' + escapeHtml(cat.naam) + '</div>';
+      if (cat.keuze_id) {
+        const chosen = (cat.opties || []).find(o => o.id === cat.keuze_id);
+        if (chosen) html += '<span class="ks-chosen-badge" style="flex-shrink:0">✓ ' + escapeHtml(chosen.naam) + '</span>';
+      }
+      html += '<div class="ks-cat-meta">' + nOpties + ' optie' + (nOpties !== 1 ? 's' : '') + '</div>';
+      html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.2" style="flex-shrink:0;transform:rotate(' + (isOpen ? '180' : '0') + 'deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>';
+      html += '<button onclick="event.stopPropagation();ksDeleteCat(' + ci + ')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 6px;font-size:18px;line-height:1;flex-shrink:0" title="Verwijder categorie">×</button>';
+      html += '</div>';
+
+      if (isOpen) {
+        html += '<div class="ks-cat-body">';
+
+        // Context / description
+        if (cat.context) {
+          html += '<div style="font-size:12px;color:var(--text2);margin:10px 0 12px;line-height:1.6;padding:8px 10px;background:var(--surface2);border-radius:8px">' + escapeHtml(cat.context) + '</div>';
+        }
+
+        // ── Criteria / prioriteiten ──
+        const prios = cat.prioriteiten || [];
+        html += '<div style="margin-bottom:12px">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
+        html += '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)">Wat geeft de doorslag?</div>';
+        html += '<button onclick="ksAddCriterium(' + ci + ')" style="background:none;border:none;color:#a78bfa;font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer;padding:0">+ criterium</button>';
+        html += '</div>';
+        if (!prios.length) {
+          html += '<div style="font-size:12px;color:var(--muted);font-style:italic">Nog geen criteria — voeg toe wat voor jou belangrijk is (bijv. gewicht, prijs, comfort).</div>';
+        } else {
+          html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+          prios.forEach((p, pi) => {
+            const color = KS_GEWICHT_COLORS[p.gewicht] || 'var(--muted)';
+            html += '<button onclick="ksCycleCriterium(' + ci + ',' + pi + ')" title="Klik om belang te wijzigen" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:16px;border:1px solid ' + color + ';background:transparent;color:' + color + ';font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer">';
+            html += escapeHtml(p.naam);
+            html += '<span style="opacity:.7;font-size:10px">' + (p.gewicht === 'hoog' ? '↑↑' : p.gewicht === 'middel' ? '↑' : '↓') + '</span>';
+            html += '<span onclick="event.stopPropagation();ksDeleteCriterium(' + ci + ',' + pi + ')" style="opacity:.5;margin-left:2px;font-size:13px;line-height:1">×</span>';
+            html += '</button>';
+          });
+          html += '</div>';
+          html += '<div style="font-size:10px;color:var(--muted);margin-top:5px">Tik op een criterium om het belang te wijzigen · ↑↑ = heel belangrijk · ↑ = belangrijk · ↓ = minder</div>';
+        }
+        html += '</div>';
+
+        // ── Opties ──
+        html += '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px">Opties</div>';
+        const opties = cat.opties || [];
+        opties.forEach((opt, oi) => {
+          const isChosen = cat.keuze_id === opt.id;
+          html += '<div class="ks-opt-row">';
+          html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">';
+          html += '<div class="ks-opt-name">' + escapeHtml(opt.naam) + '</div>';
+          html += '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">';
+          if (isChosen) {
+            html += '<span class="ks-chosen-badge">✓ Gekozen</span>';
+          } else {
+            html += '<button onclick="ksKies(' + ci + ',' + oi + ')" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;font-weight:600;padding:3px 8px;cursor:pointer;font-family:var(--font)">Kies</button>';
+          }
+          html += '<button onclick="ksDeleteOpt(' + ci + ',' + oi + ')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0 2px">×</button>';
+          html += '</div></div>';
+          if (opt.prijs) html += '<div class="ks-opt-prijs">€' + escapeHtml(String(opt.prijs)) + '</div>';
+          if (opt.details) html += '<div class="ks-opt-details">' + escapeHtml(opt.details) + '</div>';
+          if (opt.notities) html += '<div style="font-size:11px;color:var(--text2);font-style:italic;margin-top:3px">' + escapeHtml(opt.notities) + '</div>';
+          if (opt.url) {
+            html += '<a href="' + escapeHtml(opt.url) + '" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none;display:inline-block;margin-top:3px">↗ Bekijk</a>';
+          }
+          html += '</div>';
+        });
+
+        html += '<button class="ks-add-btn" onclick="ksAddOptie(' + ci + ')">+ Optie toevoegen</button>';
+
+        // ── AI Advies ──
+        html += '<div style="margin-top:14px;display:flex;gap:8px">';
+        html += '<button onclick="ksGetAdvies(' + ci + ')" style="flex:1;padding:10px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);border-radius:var(--r-sm);color:#c4b5fd;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer">';
+        html += (cat._loading ? '✦ Advies ophalen…' : '✦ AI-advies op basis van criteria');
+        html += '</button>';
+        html += '<button onclick="ksEditCat(' + ci + ')" style="padding:10px 13px;background:none;border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer" title="Bewerk naam / omschrijving">✎</button>';
+        html += '</div>';
+
+        if (cat.advies) {
+          html += '<div class="ks-advies-box">';
+          html += '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa;margin-bottom:8px">✦ AI-advies' + (cat.advies_datum ? ' · ' + cat.advies_datum : '') + '</div>';
+          html += cat.advies.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g, '<br>');
+          html += '</div>';
+        }
+
+        html += '</div>'; // ks-cat-body
+      }
+
+      html += '</div>'; // ks-cat-card
+    });
+  }
+
+  el.innerHTML = html;
+}
+
+function ksToggleCat(ci) {
+  const cat = _keuzestress?.categorieen?.[ci];
+  if (!cat) return;
+  cat._open = cat._open === false ? true : false;
+  renderKeuzestressTab();
+}
+
+function ksDeleteCat(ci) {
+  if (!confirm('Categorie "' + (_keuzestress.categorieen[ci]?.naam || '') + '" verwijderen?')) return;
+  _keuzestress.categorieen.splice(ci, 1);
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksDeleteOpt(ci, oi) {
+  const opt = _keuzestress.categorieen[ci]?.opties?.[oi];
+  if (!opt || !confirm('Optie "' + (opt.naam || '') + '" verwijderen?')) return;
+  _keuzestress.categorieen[ci].opties.splice(oi, 1);
+  if (_keuzestress.categorieen[ci].keuze_id === opt.id) _keuzestress.categorieen[ci].keuze_id = null;
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksKies(ci, oi) {
+  const opt = _keuzestress?.categorieen?.[ci]?.opties?.[oi];
+  if (!opt) return;
+  _keuzestress.categorieen[ci].keuze_id = opt.id;
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksAddCategorie() {
+  const naam = prompt('Naam van de categorie:\n(bijv. Tent, Rugzak, Racefiets)');
+  if (!naam?.trim()) return;
+  const context = prompt('Omschrijf je eisen / context (optioneel):\n(bijv. "Lichtgewicht voor 5-daagse trektocht, max 3 personen, seizoen lente")') || '';
+  if (!_keuzestress) _keuzestress = { categorieen: [] };
+  _keuzestress.categorieen.push({
+    id: ksUid(), naam: naam.trim(), context: context.trim(),
+    prioriteiten: [], opties: [], advies: null, advies_datum: null, keuze_id: null, _open: true
+  });
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksEditCat(ci) {
+  const cat = _keuzestress?.categorieen?.[ci];
+  if (!cat) return;
+  const naam = prompt('Naam:', cat.naam);
+  if (naam == null) return;
+  const context = prompt('Omschrijving / eisen:', cat.context || '');
+  if (context == null) return;
+  cat.naam = naam.trim() || cat.naam;
+  cat.context = context.trim();
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksAddCriterium(ci) {
+  const cat = _keuzestress?.categorieen?.[ci];
+  if (!cat) return;
+  const naam = prompt('Criterium naam:\n(bijv. Gewicht, Prijs, Comfort, Duurzaamheid, Kleur)');
+  if (!naam?.trim()) return;
+  const gewichtKeuze = prompt('Hoe belangrijk is dit?\n1 = Heel belangrijk\n2 = Belangrijk\n3 = Minder belangrijk\n\nVoer 1, 2 of 3 in:', '1');
+  const gwMap = { '1': 'hoog', '2': 'middel', '3': 'laag' };
+  const gewicht = gwMap[gewichtKeuze?.trim()] || 'hoog';
+  if (!cat.prioriteiten) cat.prioriteiten = [];
+  cat.prioriteiten.push({ id: ksUid(), naam: naam.trim(), gewicht });
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksCycleCriterium(ci, pi) {
+  const p = _keuzestress?.categorieen?.[ci]?.prioriteiten?.[pi];
+  if (!p) return;
+  const idx = KS_GEWICHT_CYCLE.indexOf(p.gewicht);
+  p.gewicht = KS_GEWICHT_CYCLE[(idx + 1) % KS_GEWICHT_CYCLE.length];
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksDeleteCriterium(ci, pi) {
+  _keuzestress?.categorieen?.[ci]?.prioriteiten?.splice(pi, 1);
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksAddOptie(ci) {
+  const cat = _keuzestress?.categorieen?.[ci];
+  if (!cat) return;
+  const naam = prompt('Naam van de optie:\n(bijv. MSR Hubba Hubba NX, Fjällräven Keb 52)');
+  if (!naam?.trim()) return;
+  const prijs = prompt('Prijs in euro\'s (optioneel):', '') || '';
+  const details = prompt('Details / specs (gewicht, maat, materiaal, enz.):', '') || '';
+  const notities = prompt('Notities (bijv. "gezien bij Bever", "tweede hands beschikbaar"):', '') || '';
+  const url = prompt('Link naar product (optioneel):', '') || '';
+  if (!cat.opties) cat.opties = [];
+  cat.opties.push({ id: ksUid(), naam: naam.trim(), prijs: prijs.trim(), details: details.trim(), notities: notities.trim(), url: url.trim() });
+  ksSave();
+  renderKeuzestressTab();
+}
+
+async function ksGetAdvies(ci) {
+  const cat = _keuzestress?.categorieen?.[ci];
+  if (!cat) return;
+  if (!(cat.opties?.length)) { alert('Voeg eerst opties toe voordat je advies vraagt.'); return; }
+
+  cat._loading = true;
+  renderKeuzestressTab();
+
+  // Build criteria section
+  const prios = cat.prioriteiten || [];
+  const hoogstel = prios.filter(p => p.gewicht === 'hoog').map(p => p.naam);
+  const midden  = prios.filter(p => p.gewicht === 'middel').map(p => p.naam);
+  const laagste = prios.filter(p => p.gewicht === 'laag').map(p => p.naam);
+
+  let criteriaBlok = '';
+  if (prios.length) {
+    criteriaBlok = '\nCriteria (wat Jule belangrijk vindt):';
+    if (hoogstel.length) criteriaBlok += '\n- Heel belangrijk: ' + hoogstel.join(', ');
+    if (midden.length)   criteriaBlok += '\n- Belangrijk: ' + midden.join(', ');
+    if (laagste.length)  criteriaBlok += '\n- Minder belangrijk: ' + laagste.join(', ');
+  } else {
+    criteriaBlok = '\n(Geen criteria opgegeven — beoordeel op basis van alle bekende factoren.)';
+  }
+
+  const optiesTekst = cat.opties.map((o, i) => {
+    let t = `Optie ${i + 1}: ${o.naam}`;
+    if (o.prijs) t += ` — €${o.prijs}`;
+    if (o.details) t += `\nSpecs: ${o.details}`;
+    if (o.notities) t += `\nNotities: ${o.notities}`;
+    return t;
+  }).join('\n\n');
+
+  const promptText = `Je helpt Jule bij het maken van een aankoopbeslissing.
+
+Categorie: ${cat.naam}${cat.context ? '\nContext: ' + cat.context : ''}
+${criteriaBlok}
+
+Opties:
+${optiesTekst}
+
+Analyseer de opties kort en concreet. Weeg de opties expliciet af op de criteria die Jule belangrijk vindt — "heel belangrijk" criteria wegen zwaar. Benoem voor- en nadelen per optie. Geef een duidelijke aanbeveling met motivatie. Schrijf in het Nederlands, maximaal 220 woorden.`;
+
+  try {
+    const r = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: document.getElementById('model-select')?.value || 'claude-haiku-4-5',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: promptText }]
+      })
+    });
+    const data = await r.json();
+    const tekst = data?.content?.[0]?.text || data?.error?.message || 'Fout bij ophalen advies.';
+    cat.advies = tekst;
+    cat.advies_datum = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+  } catch(e) {
+    cat.advies = 'Fout: ' + (e.message || 'Onbekende fout');
+  }
+
+  cat._loading = false;
+  ksSave();
+  renderKeuzestressTab();
+}
 
 /* ═══════════════════════════════════════════
    SYSTEM PROMPT

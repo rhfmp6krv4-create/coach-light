@@ -1768,12 +1768,27 @@ async function loadMem() {
     sbLoad('mem_blessures'),
     sbLoad('weekplan_current'),
     sbLoad('mem_checkins'),
-    sbLoad('keuzestress'),
+    sbLoad('keuzestress'),  // tries CONFIG.intervalsId; may return null if no account
   ]);
-  // Prefer Supabase; fall back to localStorage so data survives even without account
-  if (ksData) {
-    _keuzestress = ksData;
-    try { localStorage.setItem('ks_data', JSON.stringify(ksData)); } catch(e) {}
+
+  // Load keuzestress: Supabase (by intervalsId) → Supabase (by device_id) → localStorage
+  let resolvedKs = ksData;
+  if (!resolvedKs) {
+    // Try device_id path (for users without an Intervals account)
+    try {
+      const deviceKey = _getDeviceId();
+      const r2 = await fetch(
+        SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(deviceKey) +
+        '&data_type=eq.keuzestress&select=content&order=id.desc&limit=1',
+        { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+      );
+      const rows = r2.ok ? await r2.json() : [];
+      if (rows.length) { try { resolvedKs = JSON.parse(rows[0].content); } catch { resolvedKs = rows[0].content; } }
+    } catch(e) {}
+  }
+  if (resolvedKs) {
+    _keuzestress = resolvedKs;
+    try { localStorage.setItem('ks_data', JSON.stringify(resolvedKs)); } catch(e) {}
   } else {
     try {
       const local = localStorage.getItem('ks_data');
@@ -3971,18 +3986,35 @@ let _gearForPrompt = [];
 /* ═══════════════════════════════════════════
    KEUZESTRESS
 ═══════════════════════════════════════════ */
+
+// Persistent device ID — used as Supabase user_key when no Intervals account is configured
+function _getDeviceId() {
+  let id = localStorage.getItem('coach_device_id');
+  if (!id) {
+    id = 'device_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('coach_device_id', id);
+  }
+  return id;
+}
+
 async function ksSave() {
-  // Always persist to localStorage immediately (works without Intervals account)
+  // Always persist to localStorage immediately (instant, offline-safe)
   try { localStorage.setItem('ks_data', JSON.stringify(_keuzestress)); } catch(e) {}
 
-  // Cloud save (requires CONFIG.intervalsId)
+  // Cloud save — use intervalsId if available, else device_id (so it always reaches Supabase)
   const statusEl = document.getElementById('ks-save-status');
-  if (!CONFIG.intervalsId) {
-    if (statusEl) { statusEl.textContent = '💾 Lokaal opgeslagen'; statusEl.style.color = 'var(--warning)'; setTimeout(() => { statusEl.textContent = ''; }, 2500); }
-    return;
-  }
+  const userKey = CONFIG.intervalsId || _getDeviceId();
   try {
-    await sbSave('keuzestress', _keuzestress);
+    await fetch(SB_URL + '/rest/v1/coach_light_data', {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify({ user_key: userKey, data_type: 'keuzestress', content: JSON.stringify(_keuzestress) }),
+    });
     if (statusEl) { statusEl.textContent = '✓ Opgeslagen'; statusEl.style.color = 'var(--success)'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
   } catch(e) {
     if (statusEl) { statusEl.textContent = '⚠ Opslaan mislukt'; statusEl.style.color = 'var(--warning)'; setTimeout(() => { statusEl.textContent = ''; }, 3000); }

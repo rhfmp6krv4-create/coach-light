@@ -1663,6 +1663,85 @@ function updateCountdown() {
 updateCountdown();
 setInterval(updateCountdown, 60000);
 
+// ── RACE PROGNOSE WIDGET ──
+// Combined method: Method A = GPS-stream interpolation (zone-aware, no forced linearity)
+//                  Method B = linear regression on activity list (fallback)
+// Forward-looking: taper ×0.94 + CTL growth to race date
+function updatePotentieWidget(ctl, latestWellness) {
+  const raceDate = new Date('2026-10-18');
+  const weeksToRace = Math.max(0, (raceDate - new Date()) / (7 * 86400000));
+
+  // CTL growth projection
+  const buildWeeks = Math.min(Math.round(weeksToRace) - 3, Math.round(weeksToRace * 0.75));
+  const ctlNow = ctl || 50;
+  const ctlGain = Math.round(Math.min(buildWeeks * 1.5, 15));
+  const ctlFactor = 1 - (ctlGain * 0.003);  // 0.3% per CTL point (faster = smaller factor)
+
+  let nuPaceSec = null, oktPaceSec = null, subLabel = 'nu';
+
+  // Method A: Strava GPS-stream interpolation via computeTempoInzicht (best data)
+  const corrData = stravaAnalysis?.data?.pace_hr_correlatie;
+  if (corrData?.length) {
+    const inzicht = computeTempoInzicht(corrData, MEM.zones);
+    if (inzicht?.marathonTempo) {
+      const [mn, sc] = inzicht.marathonTempo.split(':').map(Number);
+      nuPaceSec = mn * 60 + (sc || 0);
+      subLabel = 'GPS-stream';
+    }
+  }
+
+  // Method B: linear regression on recent Intervals.icu runs (fallback)
+  if (!nuPaceSec) {
+    const maxHR = parseInt(CONFIG.maxHR) || 185;
+    const well7 = (intervalsCtx?.wellness || []).slice(-7);
+    const restSamples = well7.map(w => w.restingHR).filter(Boolean);
+    const rustHR = restSamples.length ? Math.round(restSamples.reduce((s,v)=>s+v,0)/restSamples.length) : 50;
+    const drempel = maxHR - 14;
+    const hrReserve = maxHR - rustHR;
+    const runs = (intervalsCtx?.activities || []).filter(a =>
+      (a.type === 'Run' || a.sport_type === 'Run') && a.average_heartrate && a.distance > 4000 && a.moving_time
+    );
+    const pts = runs.map(r => {
+      const distKm = r.distance / 1000;
+      const pace = r.moving_time / distKm;
+      const hrrPct = (r.average_heartrate - rustHR) / hrReserve * 100;
+      return [hrrPct, pace];
+    }).filter(p => p[0] >= 0 && p[0] <= 105);
+    if (pts.length >= 3) {
+      const n = pts.length;
+      const sX = pts.reduce((s,p)=>s+p[0],0), sY = pts.reduce((s,p)=>s+p[1],0);
+      const sXY = pts.reduce((s,p)=>s+p[0]*p[1],0), sXX = pts.reduce((s,p)=>s+p[0]*p[0],0);
+      const b = (n*sXY - sX*sY) / (n*sXX - sX*sX);
+      const a = (sY - b*sX) / n;
+      const marathonHRR = (drempel - 5 - rustHR) / hrReserve * 100;
+      nuPaceSec = (a + b * marathonHRR) * 1.05;
+      subLabel = runs.length + ' runs';
+    }
+  }
+
+  if (!nuPaceSec) return;
+
+  // "18 oktober": taper +6% + CTL growth
+  oktPaceSec = nuPaceSec * 0.94 * ctlFactor;
+
+  function fmtTime(paceSec) {
+    const totalMin = paceSec * 42.195 / 60;
+    const h = Math.floor(totalMin / 60);
+    const m = Math.floor(totalMin % 60);
+    return h + ':' + String(m).padStart(2, '0');
+  }
+
+  const potEl = document.getElementById('w-potentie');
+  const valEl = document.getElementById('w-pot-val');
+  const subEl = document.getElementById('w-pot-sub');
+  if (!valEl || !subEl || !potEl) return;
+  valEl.textContent = fmtTime(oktPaceSec);
+  subEl.textContent = '18 okt · ' + subLabel;
+  potEl.title = 'Nu: ' + fmtTime(nuPaceSec) + ' · taper ×0,94 · +' + ctlGain + ' CTL';
+  const oktMin = oktPaceSec * 42.195 / 60;
+  potEl.className = 'widget-pill ' + (oktMin < 240 ? 'green' : oktMin < 300 ? 'amber' : '');
+}
+
 // ── WIDGETS ──
 function updateWidgets() {
   if (!intervalsCtx) return;
@@ -1688,45 +1767,8 @@ function updateWidgets() {
       wFit.className = 'widget-pill ' + (tsb > 0 ? 'green' : tsb > -10 ? 'amber' : 'red');
     }
 
-    // Potentie: HR-efficiency op basis van recente runs
-    const runs = (intervalsCtx.activities || []).filter(a =>
-      a.type === 'Run' && a.average_heartrate && a.distance && a.moving_time
-    ).slice(0, 10);
-
-    if (runs.length >= 3) {
-      const maxHR = parseInt(CONFIG.maxHR) || 185;
-      const rustHR = 50;
-      const drempel = maxHR - 14; // ~drempel
-      const hrReserve = maxHR - rustHR;
-      const punten = [];
-      for (const r of runs) {
-        const hr = r.average_heartrate;
-        if (hr < 130 || hr > drempel + 5) continue;
-        const distKm = r.distance / 1000;
-        if (distKm < 5) continue;
-        const pace = r.moving_time / distKm;
-        const hrrPct = (hr - rustHR) / hrReserve * 100;
-        punten.push([hrrPct, pace]);
-      }
-      if (punten.length >= 3) {
-        const n = punten.length;
-        const sX = punten.reduce((s,p)=>s+p[0],0);
-        const sY = punten.reduce((s,p)=>s+p[1],0);
-        const sXY = punten.reduce((s,p)=>s+p[0]*p[1],0);
-        const sXX = punten.reduce((s,p)=>s+p[0]*p[0],0);
-        const b = (n*sXY - sX*sY) / (n*sXX - sX*sX);
-        const a = (sY - b*sX) / n;
-        const marathonHRR = (drempel - 5 - rustHR) / hrReserve * 100;
-        const pace = (a + b * marathonHRR) * 1.05;
-        const marathonMin = pace * 42.195 / 60;
-        const h = Math.floor(marathonMin/60);
-        const m = Math.floor(marathonMin%60);
-        document.getElementById('w-pot-val').textContent = h + ':' + String(m).padStart(2,'0');
-        document.getElementById('w-pot-sub').textContent = 'marathon schatting';
-        const wPot = document.getElementById('w-potentie');
-        wPot.className = 'widget-pill ' + (marathonMin < 240 ? 'green' : marathonMin < 300 ? 'amber' : '');
-      }
-    }
+    // Potentie: combined best-of-both method (mirrors jule-v2.html computePrognoseData)
+    updatePotentieWidget(ctl, latest);
   }
 
   // Weer (Open-Meteo, Zwolle als fallback — locatie uit profiel niet bekend)

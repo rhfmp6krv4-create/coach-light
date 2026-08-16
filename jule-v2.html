@@ -1770,7 +1770,16 @@ async function loadMem() {
     sbLoad('mem_checkins'),
     sbLoad('keuzestress'),
   ]);
-  _keuzestress = ksData || { categorieen: [] };
+  // Prefer Supabase; fall back to localStorage so data survives even without account
+  if (ksData) {
+    _keuzestress = ksData;
+    try { localStorage.setItem('ks_data', JSON.stringify(ksData)); } catch(e) {}
+  } else {
+    try {
+      const local = localStorage.getItem('ks_data');
+      _keuzestress = local ? JSON.parse(local) : { categorieen: [] };
+    } catch(e) { _keuzestress = { categorieen: [] }; }
+  }
 
   MEM.macroplan = macro || null;
   MEM.weekplannen = weeks || [];
@@ -2728,21 +2737,24 @@ function renderPotCard() {
   const srcQuality = data.src?.startsWith('Strava GPS') ? '★★★' : data.src?.startsWith('Strava (') ? '★★☆' : '★☆☆';
   const srcNote = data.buckets
     ? data.punten.toLocaleString() + ' GPS-punten, ' + data.buckets + ' tempo-buckets'
-    : data.punten + ' runs';
+    : (data.punten || '?') + ' runs';
 
-  // "Potentie nu" row
+  // "Potentie nu" row — explanation adapts to which method was used
   const rowNu = document.getElementById('pot-row-nu');
   if (rowNu) {
     const c = data.nuMin < 240 ? 'var(--success)' : data.nuMin < 270 ? 'var(--warning)' : 'var(--text)';
+    const nuExplain = data.methodLabel?.startsWith('interpolatie')
+      ? 'Marathontempo direct bepaald via pace/HR-interpolatie op <strong>' + srcNote + '</strong> uit <em>' + data.src + '</em>. Tempo = het pace bij marathonhartslagzone (midden Z3) — zone-bewust, geen lineaire aanname.'
+      : 'Drempeltempo bepaald via lineaire regressie op <strong>' + srcNote + '</strong> uit <em>' + data.src + '</em>. Marathontempo = drempel × 1,05 (Billat/Daniels).';
     rowNu.innerHTML =
       '<div class="pot-row-header">'
       + '<span class="pot-row-time" style="color:' + c + '">' + data.nuTime + '</span>'
       + '<span class="pot-row-label">Potentie nu</span>'
       + '</div>'
-      + '<div class="pot-row-explain">Drempeltempo bepaald via pace/HR-regressie op <strong>' + srcNote + '</strong> uit <em>' + data.src + '</em>. Marathontempo = drempel × 1,05 (Billat/Daniels). Dit is de <em>huidige</em> capaciteit onder trainingsbelasting — geen taperfactor inbegrepen.</div>'
+      + '<div class="pot-row-explain">' + nuExplain + ' Dit is de <em>huidige</em> capaciteit onder trainingsbelasting — geen taperfactor inbegrepen.</div>'
       + '<div class="pot-row-factors">'
       + '<span class="pot-factor">' + data.src + '</span>'
-      + '<span class="pot-factor">drempel × 1,05</span>'
+      + '<span class="pot-factor">' + (data.methodLabel || 'regressie') + '</span>'
       + '<span class="pot-factor">databron ' + srcQuality + '</span>'
       + '</div>';
   }
@@ -2756,13 +2768,11 @@ function renderPotCard() {
       + '<span class="pot-row-time" style="color:' + c + '">' + data.oktTime + '</span>'
       + '<span class="pot-row-label">Prognose 18 oktober</span>'
       + '</div>'
-      + '<div class="pot-row-explain">Zelfde drempeltempo, maar gecorrigeerd: '
-      + '<strong>taper-bonus +7%</strong> (uitgerust na 3 weken afbouw), '
-      + '<strong>marathon vs drempel ×1,04</strong> (raceomstandigheden), '
+      + '<div class="pot-row-explain">Zelfde marathontempo, maar gecorrigeerd voor racedag: '
+      + '<strong>taper-bonus +6%</strong> (uitgerust na 3 weken afbouw), '
       + 'en nog <strong>' + data.buildWeeks + ' opbouwweken</strong> CTL-groei (+' + data.ctlGain + ' CTL, ~0,3%/punt).</div>'
       + '<div class="pot-row-factors">'
-      + '<span class="pot-factor">taper +7%</span>'
-      + '<span class="pot-factor">drempel × 1,04</span>'
+      + '<span class="pot-factor">taper ×0,94</span>'
       + '<span class="pot-factor">+' + data.ctlGain + ' CTL over ' + data.buildWeeks + ' wkn</span>'
       + '</div>';
   }
@@ -3961,8 +3971,22 @@ let _gearForPrompt = [];
 /* ═══════════════════════════════════════════
    KEUZESTRESS
 ═══════════════════════════════════════════ */
-function ksSave() {
-  sbSave('keuzestress', _keuzestress);
+async function ksSave() {
+  // Always persist to localStorage immediately (works without Intervals account)
+  try { localStorage.setItem('ks_data', JSON.stringify(_keuzestress)); } catch(e) {}
+
+  // Cloud save (requires CONFIG.intervalsId)
+  const statusEl = document.getElementById('ks-save-status');
+  if (!CONFIG.intervalsId) {
+    if (statusEl) { statusEl.textContent = '💾 Lokaal opgeslagen'; statusEl.style.color = 'var(--warning)'; setTimeout(() => { statusEl.textContent = ''; }, 2500); }
+    return;
+  }
+  try {
+    await sbSave('keuzestress', _keuzestress);
+    if (statusEl) { statusEl.textContent = '✓ Opgeslagen'; statusEl.style.color = 'var(--success)'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '⚠ Opslaan mislukt'; statusEl.style.color = 'var(--warning)'; setTimeout(() => { statusEl.textContent = ''; }, 3000); }
+  }
 }
 
 function ksUid() {
@@ -3984,7 +4008,7 @@ function renderKeuzestressTab() {
 
   // Header
   html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px">';
-  html += '<div><div style="font-size:18px;font-weight:700">Keuzestress?</div>';
+  html += '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px;font-weight:700">Keuzestress?</span><span id="ks-save-status" style="font-size:11px;font-weight:600;transition:color .2s"></span></div>';
   html += '<div style="font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5">Voeg categorieën toe, geef aan wat belangrijk is, voer opties in en vraag AI-advies.</div></div>';
   html += '<button onclick="ksAddCategorie()" style="flex-shrink:0;padding:8px 14px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.4);border-radius:20px;color:#c4b5fd;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;white-space:nowrap">+ Categorie</button>';
   html += '</div>';
@@ -4512,50 +4536,64 @@ function _fromActivityList(runs) {
 }
 
 // ── Public API ──
-// Returns null or { nuMin, nuTime, oktMin, oktTime, src, punten, ... }
+// Returns null or { nuMin, nuTime, oktMin, oktTime, src, punten, method, ... }
 function computePrognoseData() {
   const raceDate = new Date('2026-10-18');
   const weeksToRace = Math.max(0, (raceDate - new Date()) / (7 * 86400000));
   const { buildWeeks, factor: ctlFactor, ctlGain } = _ctlFitnessGain(weeksToRace);
 
-  // Pick best available source
-  let base = _fromStravaCorr();
-  let srcLabel = base ? 'Strava GPS-stream' : null;
+  // ── Method A: Strava GPS-stream interpolation (best — no forced linearity, zone-aware) ──
+  // Uses Rob's proven computeTempoInzicht() which linearly interpolates between bucket
+  // centroids to find the exact pace at zone-based marathon HR — no extrapolation needed.
+  let nuPaceSec = null, srcLabel = null, punten = null, buckets = null, methodLabel = null;
 
-  if (!base) {
-    // Try Strava activities if fetched
-    const stravaRuns = (_stravaActivities || []);
-    if (stravaRuns.length >= 5) {
-      base = _fromActivityList(stravaRuns);
-      if (base) srcLabel = 'Strava (' + stravaRuns.length + ' runs)';
+  const corrData = stravaAnalysis?.data?.pace_hr_correlatie;
+  if (corrData?.length) {
+    const inzicht = computeTempoInzicht(corrData, MEM.zones);
+    if (inzicht?.marathonTempo) {
+      const [mn, sc] = inzicht.marathonTempo.split(':').map(Number);
+      nuPaceSec = mn * 60 + (sc || 0);
+      punten = corrData.reduce((s, b) => s + (b.count || 0), 0);
+      buckets = corrData.filter(b => (b.count || 0) >= 15).length;
+      srcLabel = 'Strava GPS-stream';
+      methodLabel = 'interpolatie (zone-bewust)';
     }
   }
-  if (!base) {
-    // Fall back to Intervals.icu activities
-    const acts = (intervalsCtx?.activities || [])
+
+  // ── Method B: Linear regression on activity list (Strava or Intervals.icu) ──
+  if (!nuPaceSec) {
+    const stravaRuns = _stravaActivities?.length >= 5 ? _stravaActivities : null;
+    const intervalRuns = (intervalsCtx?.activities || [])
       .filter(a => (a.type === 'Run' || a.sport_type === 'Run') && a.average_heartrate && a.distance && a.moving_time);
-    base = _fromActivityList(acts);
-    if (base) srcLabel = 'Intervals.icu (' + acts.length + ' runs)';
+    const runs = stravaRuns || intervalRuns;
+    const base = _fromActivityList(runs);
+    if (base) {
+      nuPaceSec = base.threshPaceSec * 1.05;
+      punten = base.punten;
+      srcLabel = stravaRuns
+        ? 'Strava (' + _stravaActivities.length + ' runs)'
+        : 'Intervals.icu (' + intervalRuns.length + ' runs)';
+      methodLabel = 'lineaire regressie (drempel × 1,05)';
+    }
   }
-  if (!base) return null;
 
-  // "Nu" — training pace + standard marathon vs threshold factor (no taper)
-  const nuPace = base.threshPaceSec * 1.05;
-  const nuMin = nuPace * 42.195 / 60;
+  if (!nuPaceSec) return null;
 
-  // "18 oktober" — taper correction + future CTL growth
-  const racePace = base.threshPaceSec * 0.93 * 1.04 * ctlFactor;
-  const oktMin = racePace * 42.195 / 60;
+  const nuMin = nuPaceSec * 42.195 / 60;
+
+  // ── "18 oktober": layer taper + CTL growth on top of current estimate ──
+  // nuPaceSec = current training pace (collected under accumulated fatigue)
+  // Taper: 3 weken afbouw → 6% sneller (vers vs vermoeid)
+  // CTL-groei: opgebouwde fitnesswinst over resterende opbouwweken
+  const oktPaceSec = nuPaceSec * 0.94 * ctlFactor;
+  const oktMin = oktPaceSec * 42.195 / 60;
 
   return {
     nuTime: _minToTime(nuMin), nuMin,
     oktTime: _minToTime(oktMin), oktMin,
-    src: srcLabel,
-    punten: base.punten,
-    buckets: base.buckets || null,
+    src: srcLabel, punten, buckets, methodLabel,
     weeksToRace: Math.round(weeksToRace),
-    buildWeeks,
-    ctlGain,
+    buildWeeks, ctlGain,
   };
 }
 

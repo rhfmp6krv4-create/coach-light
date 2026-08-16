@@ -4920,6 +4920,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitMessage(); }
   });
   document.getElementById('coach-send').addEventListener('click', submitMessage);
+
+  // iOS Safari keyboard fix — resize #app when visual viewport shrinks so
+  // the chat composer stays above the keyboard instead of being hidden behind it.
+  if (window.visualViewport) {
+    const app = document.getElementById('app');
+    const onVVResize = () => {
+      app.style.height = window.visualViewport.height + 'px';
+      if (currentTab === 'chat') {
+        const msgs = document.getElementById('coach-messages');
+        if (msgs) requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
+      }
+    };
+    window.visualViewport.addEventListener('resize', onVVResize);
+  } else {
+    // Fallback for browsers without visualViewport: scroll input into view on focus
+    inp.addEventListener('focus', () => {
+      setTimeout(() => inp.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 350);
+    });
+  }
+
   init();
 });
 </script>

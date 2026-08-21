@@ -1812,7 +1812,7 @@ async function loadMem() {
     sbLoad('keuzestress'),  // tries CONFIG.intervalsId; may return null if no account
   ]);
 
-  // Load keuzestress: Supabase (by intervalsId) → Supabase (by device_id) → localStorage
+  // Load keuzestress: Supabase (by intervalsId) → Supabase (by device_id)
   let resolvedKs = ksData;
   if (!resolvedKs) {
     // Try device_id path (for users without an Intervals account)
@@ -1827,15 +1827,7 @@ async function loadMem() {
       if (rows.length) { try { resolvedKs = JSON.parse(rows[0].content); } catch { resolvedKs = rows[0].content; } }
     } catch(e) {}
   }
-  if (resolvedKs) {
-    _keuzestress = resolvedKs;
-    try { localStorage.setItem('ks_data', JSON.stringify(resolvedKs)); } catch(e) {}
-  } else {
-    try {
-      const local = localStorage.getItem('ks_data');
-      _keuzestress = local ? JSON.parse(local) : { categorieen: [] };
-    } catch(e) { _keuzestress = { categorieen: [] }; }
-  }
+  _keuzestress = resolvedKs || { categorieen: [] };
 
   MEM.macroplan = macro || null;
   MEM.weekplannen = weeks || [];
@@ -4054,10 +4046,6 @@ function _getDeviceId() {
 }
 
 async function ksSave() {
-  // Always persist to localStorage immediately (instant, offline-safe)
-  try { localStorage.setItem('ks_data', JSON.stringify(_keuzestress)); } catch(e) {}
-
-  // Cloud save — use intervalsId if available, else device_id (so it always reaches Supabase)
   const statusEl = document.getElementById('ks-save-status');
   const userKey = CONFIG.intervalsId || _getDeviceId();
   try {

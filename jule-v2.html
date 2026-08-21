@@ -971,6 +971,34 @@ h3 { font-size: 16px; font-weight: 600; }
 
 /* ─── KEUZESTRESS ─── */
 .ks-scroll { overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Segmented control */
+.ks-seg { display:flex; background:var(--surface); border:1px solid var(--border2); border-radius:10px; padding:3px; gap:3px; flex-shrink:0; }
+.ks-seg-btn { flex:1; padding:8px 12px; border:none; border-radius:7px; background:none; color:var(--text2); font-size:12px; font-weight:600; font-family:var(--font); cursor:pointer; transition:background .15s,color .15s; }
+.ks-seg-btn.active { background:rgba(139,92,246,.25); color:#c4b5fd; }
+
+/* Styling / garderobe */
+.ks-style-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+@media(min-width:600px){ .ks-style-grid { grid-template-columns:repeat(3,1fr); } }
+.ks-item-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; position:relative; }
+.ks-item-photo { width:100%; aspect-ratio:3/4; object-fit:cover; display:block; }
+.ks-item-nophoto { width:100%; aspect-ratio:3/4; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:38px; color:var(--muted); }
+.ks-item-meta { padding:8px 10px 10px; }
+.ks-item-name { font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ks-item-sub { font-size:10px; color:var(--text2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ks-item-del { position:absolute; top:6px; right:6px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.6); border:none; color:#fff; font-size:13px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.ks-style-form { background:var(--surface); border:1px solid rgba(139,92,246,.3); border-radius:var(--r); padding:14px; display:flex; flex-direction:column; gap:10px; }
+.ks-style-input { width:100%; box-sizing:border-box; background:var(--surface2); border:1px solid var(--border2); border-radius:8px; padding:9px 12px; color:var(--text); font-family:var(--font); font-size:13px; outline:none; }
+.ks-style-input:focus { border-color:rgba(139,92,246,.5); }
+.ks-style-input::placeholder { color:var(--muted); }
+.ks-style-select { appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
+.ks-photo-tap { width:100%; aspect-ratio:3/4; background:var(--surface2); border:2px dashed var(--border2); border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; color:var(--text2); font-size:12px; overflow:hidden; position:relative; }
+.ks-photo-tap img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.ks-style-ai-box { background:var(--surface2); border:1px solid rgba(139,92,246,.25); border-radius:var(--r-sm); padding:14px; font-size:13px; line-height:1.7; color:var(--text); }
+.ks-filter-row { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+.ks-filter-row::-webkit-scrollbar { display:none; }
+.ks-filter-chip { flex-shrink:0; padding:4px 10px; border-radius:14px; border:1px solid var(--border2); background:none; color:var(--text2); font-size:11px; font-weight:600; font-family:var(--font); cursor:pointer; transition:all .12s; }
+.ks-filter-chip.active { background:rgba(139,92,246,.2); border-color:rgba(139,92,246,.5); color:#c4b5fd; }
 .ks-cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .ks-cat-header { padding: 14px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
 .ks-cat-name { font-weight: 600; font-size: 15px; flex: 1; min-width: 0; }
@@ -1630,6 +1658,9 @@ body.tab-keuzestress .ks-fab { display: none !important; }
 
 </div><!-- /app -->
 
+<!-- Hidden photo input for garderobe -->
+<input type="file" id="ks-photo-input" accept="image/*" style="display:none" onchange="ksStylingPhotoSelected(this)">
+
 <!-- Keuzestress FAB (mobile only, hidden when on keuzestress tab) -->
 <div class="ks-fab">
   <button class="ks-fab-btn" onclick="switchTab('keuzestress')">✦ Keuzestress?</button>
@@ -1674,6 +1705,13 @@ let stravaCtx = null; // null | { connected: true, athlete_name: string }
 const STRAVA_CLIENT_ID = '260913';
 let MEM = { macroplan: null, weekplannen: [], checkins: [], flags: [], zones: null, voeding: null, kracht: null, blessures: null };
 let _keuzestress = null;
+let _ksView = 'categorieen'; // 'categorieen' | 'styling'
+let _ksStyleFormOpen = false;
+let _ksStyleFormData = { naam: '', categorie: 'tops', kleur: '', beschrijving: '', gelegenheid: '', fotoData: null };
+let _ksStyleFilter = 'alle';
+let _ksStyleAdvies = null;
+let _ksStyleAdviesType = null; // 'outfit' | 'aankoop'
+let _ksStyleLoading = false;
 let _stravaActivities = null; // cached from direct Strava fetch (async)
 let ciScore = 0;
 let messages = [];
@@ -4050,13 +4088,31 @@ function renderKeuzestressTab() {
   if (!el) return;
   if (!_keuzestress) _keuzestress = { categorieen: [] };
 
-  const cats = _keuzestress.categorieen || [];
   let html = '';
 
   // Header
-  html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px">';
-  html += '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px;font-weight:700">Keuzestress?</span><span id="ks-save-status" style="font-size:11px;font-weight:600;transition:color .2s"></span></div>';
-  html += '<div style="font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5">Voeg categorieën toe, geef aan wat belangrijk is, voer opties in en vraag AI-advies.</div></div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">';
+  html += '<span style="font-size:18px;font-weight:700;flex:1">Keuzestress?</span>';
+  html += '<span id="ks-save-status" style="font-size:11px;font-weight:600;transition:color .2s"></span>';
+  html += '</div>';
+
+  // Segmented control
+  html += '<div class="ks-seg">';
+  html += '<button class="ks-seg-btn' + (_ksView === 'categorieen' ? ' active' : '') + '" onclick="ksSetView(\'categorieen\')">Categorieën</button>';
+  html += '<button class="ks-seg-btn' + (_ksView === 'styling' ? ' active' : '') + '" onclick="ksSetView(\'styling\')">✦ Styling</button>';
+  html += '</div>';
+
+  if (_ksView === 'styling') {
+    html += renderKsStyleView();
+    el.innerHTML = html;
+    return;
+  }
+
+  // — Categorieën view —
+  const cats = _keuzestress.categorieen || [];
+
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">';
+  html += '<div style="font-size:12px;color:var(--text2);line-height:1.5">Voeg categorieën toe, geef aan wat belangrijk is, voer opties in en vraag AI-advies.</div>';
   html += '<button onclick="ksAddCategorie()" style="flex-shrink:0;padding:8px 14px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.4);border-radius:20px;color:#c4b5fd;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;white-space:nowrap">+ Categorie</button>';
   html += '</div>';
 
@@ -4327,6 +4383,247 @@ Analyseer de opties kort en concreet. Weeg de opties expliciet af op de criteria
 
   cat._loading = false;
   ksSave();
+  renderKeuzestressTab();
+}
+
+/* ═══════════════════════════════════════════
+   KEUZESTRESS — STYLING / GARDEROBE
+═══════════════════════════════════════════ */
+const KS_STIJL_CATS = ['tops', 'bottoms', 'jurken', 'jassen', 'schoenen', 'accessoires', 'sport', 'anders'];
+const KS_STIJL_EMOJI = { tops:'👚', bottoms:'👖', jurken:'👗', jassen:'🧥', schoenen:'👟', accessoires:'👜', sport:'🏃', anders:'✨' };
+
+function ksSetView(view) { _ksView = view; renderKeuzestressTab(); }
+
+function renderKsStyleView() {
+  if (!_keuzestress.garderobe) _keuzestress.garderobe = [];
+  const items = _keuzestress.garderobe;
+  const filtered = _ksStyleFilter === 'alle' ? items : items.filter(i => i.categorie === _ksStyleFilter);
+  let h = '';
+
+  // Sub-header
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">';
+  h += '<div style="font-size:12px;color:var(--text2)">Voeg kledingstukken toe. AI helpt met outfits en aankoopadvies.</div>';
+  h += '<button onclick="ksStylingToggleForm()" style="flex-shrink:0;padding:8px 14px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.4);border-radius:20px;color:#c4b5fd;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer">' + (_ksStyleFormOpen ? '✕ Sluiten' : '+ Toevoegen') + '</button>';
+  h += '</div>';
+
+  // Add-item form
+  if (_ksStyleFormOpen) {
+    const fd = _ksStyleFormData;
+    h += '<div class="ks-style-form">';
+    h += '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa">Nieuw kledingstuk</div>';
+
+    // Photo tap area (col left) + fields (col right) — stacked on mobile, side-by-side on wider
+    h += '<div style="display:grid;grid-template-columns:100px 1fr;gap:10px;align-items:start">';
+
+    // Photo
+    h += '<div class="ks-photo-tap" onclick="document.getElementById(\'ks-photo-input\').click()">';
+    if (fd.fotoData) {
+      h += '<img src="' + fd.fotoData + '" alt="foto">';
+    } else {
+      h += '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+      h += '<span>Foto</span>';
+    }
+    h += '</div>';
+
+    // Fields
+    h += '<div style="display:flex;flex-direction:column;gap:8px">';
+    h += '<input class="ks-style-input" placeholder="Naam *" value="' + escapeHtml(fd.naam) + '" oninput="_ksStyleFormData.naam=this.value">';
+    h += '<select class="ks-style-input ks-style-select" onchange="_ksStyleFormData.categorie=this.value">';
+    KS_STIJL_CATS.forEach(c => { h += '<option value="' + c + '"' + (fd.categorie === c ? ' selected' : '') + '>' + KS_STIJL_EMOJI[c] + ' ' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>'; });
+    h += '</select>';
+    h += '<input class="ks-style-input" placeholder="Kleur(en)" value="' + escapeHtml(fd.kleur) + '" oninput="_ksStyleFormData.kleur=this.value">';
+    h += '</div>';
+    h += '</div>'; // grid
+
+    h += '<input class="ks-style-input" placeholder="Omschrijving (merk, materiaal, stijl…)" value="' + escapeHtml(fd.beschrijving) + '" oninput="_ksStyleFormData.beschrijving=this.value">';
+    h += '<input class="ks-style-input" placeholder="Gelegenheid (casual, sport, avond…)" value="' + escapeHtml(fd.gelegenheid) + '" oninput="_ksStyleFormData.gelegenheid=this.value">';
+
+    h += '<div style="display:flex;gap:8px">';
+    h += '<button onclick="ksStylingSubmit()" style="flex:1;padding:10px;background:rgba(139,92,246,.22);border:1px solid rgba(139,92,246,.45);border-radius:var(--r-sm);color:#c4b5fd;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer">Toevoegen</button>';
+    h += '<button onclick="ksStylingToggleForm()" style="padding:10px 14px;background:none;border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer">Annuleer</button>';
+    h += '</div>';
+    h += '</div>'; // form
+  }
+
+  // Category filter chips
+  if (items.length > 0) {
+    h += '<div class="ks-filter-row">';
+    h += '<button class="ks-filter-chip' + (_ksStyleFilter === 'alle' ? ' active' : '') + '" onclick="ksStylingFilter(\'alle\')">Alle (' + items.length + ')</button>';
+    KS_STIJL_CATS.forEach(c => {
+      const n = items.filter(i => i.categorie === c).length;
+      if (!n) return;
+      h += '<button class="ks-filter-chip' + (_ksStyleFilter === c ? ' active' : '') + '" onclick="ksStylingFilter(\'' + c + '\')">' + KS_STIJL_EMOJI[c] + ' ' + c.charAt(0).toUpperCase() + c.slice(1) + ' (' + n + ')</button>';
+    });
+    h += '</div>';
+  }
+
+  // Item grid
+  if (!filtered.length) {
+    h += '<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:13px;line-height:1.7">Nog geen kledingstukken' + (_ksStyleFilter !== 'alle' ? ' in deze categorie' : '') + '.<br><span style="color:var(--text2)">Tik op "+ Toevoegen" om te beginnen.</span></div>';
+  } else {
+    h += '<div class="ks-style-grid">';
+    filtered.forEach(item => {
+      h += '<div class="ks-item-card">';
+      if (item.foto) {
+        h += '<img class="ks-item-photo" src="' + item.foto + '" alt="' + escapeHtml(item.naam) + '" loading="lazy">';
+      } else {
+        h += '<div class="ks-item-nophoto">' + (KS_STIJL_EMOJI[item.categorie] || '✨') + '</div>';
+      }
+      h += '<div class="ks-item-meta">';
+      h += '<div class="ks-item-name">' + escapeHtml(item.naam) + '</div>';
+      const sub = [item.kleur, item.gelegenheid].filter(Boolean).join(' · ');
+      if (sub) h += '<div class="ks-item-sub">' + escapeHtml(sub) + '</div>';
+      h += '</div>';
+      h += '<button class="ks-item-del" onclick="ksStylingDelete(\'' + item.id + '\')" title="Verwijder">×</button>';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+
+  // AI buttons (only when there are items)
+  if (items.length >= 2) {
+    h += '<div style="display:flex;gap:8px;margin-top:4px">';
+    h += '<button onclick="ksStylingGetAdvies(\'outfit\')" style="flex:1;padding:10px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);border-radius:var(--r-sm);color:#c4b5fd;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer">';
+    h += _ksStyleLoading && _ksStyleAdviesType === 'outfit' ? '✦ Laden…' : '✦ Outfit combinaties';
+    h += '</button>';
+    h += '<button onclick="ksStylingGetAdvies(\'aankoop\')" style="flex:1;padding:10px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);border-radius:var(--r-sm);color:#c4b5fd;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer">';
+    h += _ksStyleLoading && _ksStyleAdviesType === 'aankoop' ? '✦ Laden…' : '✦ Aankoopadvies';
+    h += '</button>';
+    h += '</div>';
+  } else if (items.length === 1) {
+    h += '<div style="font-size:12px;color:var(--muted);text-align:center;padding:4px 0">Voeg nog minimaal 1 kledingstuk toe voor AI-advies.</div>';
+  }
+
+  // AI advice display
+  if (_ksStyleAdvies) {
+    const typeLabel = _ksStyleAdviesType === 'outfit' ? '✦ Outfit combinaties' : '✦ Aankoopadvies';
+    h += '<div class="ks-style-ai-box">';
+    h += '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa;margin-bottom:8px">' + typeLabel + '</div>';
+    h += _ksStyleAdvies.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    h += '</div>';
+  }
+
+  return h;
+}
+
+function ksStylingToggleForm() {
+  _ksStyleFormOpen = !_ksStyleFormOpen;
+  if (_ksStyleFormOpen) _ksStyleFormData = { naam: '', categorie: 'tops', kleur: '', beschrijving: '', gelegenheid: '', fotoData: null };
+  renderKeuzestressTab();
+}
+
+function ksStylingFilter(cat) { _ksStyleFilter = cat; renderKeuzestressTab(); }
+
+function ksStylingSubmit() {
+  const fd = _ksStyleFormData;
+  if (!fd.naam.trim()) { alert('Geef het kledingstuk een naam.'); return; }
+  if (!_keuzestress.garderobe) _keuzestress.garderobe = [];
+  _keuzestress.garderobe.push({
+    id: ksUid(),
+    naam: fd.naam.trim(),
+    categorie: fd.categorie,
+    kleur: fd.kleur.trim(),
+    beschrijving: fd.beschrijving.trim(),
+    gelegenheid: fd.gelegenheid.trim(),
+    foto: fd.fotoData || null
+  });
+  _ksStyleFormOpen = false;
+  _ksStyleFormData = { naam: '', categorie: 'tops', kleur: '', beschrijving: '', gelegenheid: '', fotoData: null };
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksStylingDelete(id) {
+  const item = _keuzestress.garderobe?.find(i => i.id === id);
+  if (!item || !confirm('Verwijder "' + item.naam + '"?')) return;
+  _keuzestress.garderobe = _keuzestress.garderobe.filter(i => i.id !== id);
+  ksSave();
+  renderKeuzestressTab();
+}
+
+function ksStylingPhotoSelected(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    const MAX = 600;
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const ratio = h / w;
+    if (w > MAX) { w = MAX; h = Math.round(MAX * ratio); }
+    if (h > MAX) { h = MAX; w = Math.round(MAX / ratio); }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    _ksStyleFormData.fotoData = canvas.toDataURL('image/jpeg', 0.72);
+    input.value = '';
+    renderKeuzestressTab();
+  };
+  img.src = url;
+}
+
+async function ksStylingGetAdvies(type) {
+  const items = _keuzestress.garderobe;
+  if (!items?.length) return;
+
+  _ksStyleLoading = true;
+  _ksStyleAdviesType = type;
+  _ksStyleAdvies = null;
+  renderKeuzestressTab();
+
+  const lijst = items.map(i => {
+    let t = '- ' + i.naam + ' (' + i.categorie + ')';
+    if (i.kleur) t += ' — ' + i.kleur;
+    if (i.beschrijving) t += ' · ' + i.beschrijving;
+    if (i.gelegenheid) t += ' [' + i.gelegenheid + ']';
+    return t;
+  }).join('\n');
+
+  let promptText;
+  if (type === 'outfit') {
+    promptText = `Je helpt Jule met outfit-combinaties op basis van haar garderobe.
+
+Jule's garderobe:
+${lijst}
+
+Stel 3 concrete outfits samen uit deze stukken. Geef voor elke outfit:
+1. Welke kledingstukken gecombineerd worden (exacte namen)
+2. Bij welke gelegenheid dit past
+3. Een korte stylingtip of accessoire-suggestie
+
+Schrijf persoonlijk, in het Nederlands, max 300 woorden.`;
+  } else {
+    promptText = `Je geeft Jule advies over nieuwe kledingaankopen op basis van haar huidige garderobe.
+
+Jule's garderobe:
+${lijst}
+
+Analyseer de garderobe en geef:
+1. Wat ontbreekt voor meer veelzijdigheid (capsule wardrobe gedachte)
+2. 3-5 concrete aankoopsuggesties met motivatie
+3. Een tip over kleur of stijlcohesie
+
+Schrijf persoonlijk, in het Nederlands, max 280 woorden.`;
+  }
+
+  try {
+    const r = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: document.getElementById('model-select')?.value || 'claude-haiku-4-5',
+        max_tokens: 700,
+        messages: [{ role: 'user', content: promptText }]
+      })
+    });
+    const data = await r.json();
+    _ksStyleAdvies = data?.content?.[0]?.text || data?.error?.message || 'Fout bij ophalen advies.';
+  } catch(e) {
+    _ksStyleAdvies = 'Fout: ' + (e.message || 'Onbekende fout');
+  }
+
+  _ksStyleLoading = false;
   renderKeuzestressTab();
 }
 

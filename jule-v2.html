@@ -1725,6 +1725,8 @@ let currentTab = 'home';
    SUPABASE HELPERS
 ═══════════════════════════════════════════ */
 async function sbSave(dataType, content) {
+  const cacheKey = 'sb-cache-' + dataType;
+  const serialised = JSON.stringify(content);
   try {
     await fetch(SB_URL + '/rest/v1/coach_light_data', {
       method: 'POST',
@@ -1737,13 +1739,18 @@ async function sbSave(dataType, content) {
       body: JSON.stringify({
         user_key: CONFIG.intervalsId,
         data_type: dataType,
-        content: JSON.stringify(content)
+        content: serialised
       })
     });
-  } catch(e) { console.warn('sbSave error:', dataType, e); }
+    try { localStorage.setItem(cacheKey, serialised); } catch(e) {}
+  } catch(e) {
+    console.warn('sbSave error:', dataType, e);
+    try { localStorage.setItem(cacheKey, serialised); } catch(e2) {}
+  }
 }
 
 async function sbLoad(dataType) {
+  const cacheKey = 'sb-cache-' + dataType;
   try {
     const r = await fetch(
       SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(CONFIG.intervalsId) +
@@ -1751,9 +1758,11 @@ async function sbLoad(dataType) {
       { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
     );
     const rows = r.ok ? await r.json() : [];
-    if (!rows.length) return null;
-    try { return JSON.parse(rows[0].content); } catch { return rows[0].content; }
-  } catch(e) { return null; }
+    if (rows.length) {
+      try { return JSON.parse(rows[0].content); } catch { return rows[0].content; }
+    }
+  } catch(e) { /* fall through to cache */ }
+  try { const c = localStorage.getItem(cacheKey); return c ? JSON.parse(c) : null; } catch(e) { return null; }
 }
 
 /* ═══════════════════════════════════════════
@@ -1826,6 +1835,9 @@ async function loadMem() {
       const rows = r2.ok ? await r2.json() : [];
       if (rows.length) { try { resolvedKs = JSON.parse(rows[0].content); } catch { resolvedKs = rows[0].content; } }
     } catch(e) {}
+  }
+  if (!resolvedKs) {
+    try { const c = localStorage.getItem('sb-cache-keuzestress'); if (c) resolvedKs = JSON.parse(c); } catch(e) {}
   }
   _keuzestress = resolvedKs || { categorieen: [] };
 
@@ -4048,6 +4060,7 @@ function _getDeviceId() {
 async function ksSave() {
   const statusEl = document.getElementById('ks-save-status');
   const userKey = CONFIG.intervalsId || _getDeviceId();
+  const serialised = JSON.stringify(_keuzestress);
   try {
     await fetch(SB_URL + '/rest/v1/coach_light_data', {
       method: 'POST',
@@ -4057,10 +4070,12 @@ async function ksSave() {
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=minimal',
       },
-      body: JSON.stringify({ user_key: userKey, data_type: 'keuzestress', content: JSON.stringify(_keuzestress) }),
+      body: JSON.stringify({ user_key: userKey, data_type: 'keuzestress', content: serialised }),
     });
+    try { localStorage.setItem('sb-cache-keuzestress', serialised); } catch(e) {}
     if (statusEl) { statusEl.textContent = '✓ Opgeslagen'; statusEl.style.color = 'var(--success)'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
   } catch(e) {
+    try { localStorage.setItem('sb-cache-keuzestress', serialised); } catch(e2) {}
     if (statusEl) { statusEl.textContent = '⚠ Opslaan mislukt'; statusEl.style.color = 'var(--warning)'; setTimeout(() => { statusEl.textContent = ''; }, 3000); }
   }
 }

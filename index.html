@@ -1242,12 +1242,100 @@ function cleanWellness(w) {
     ctl: w.ctl != null ? Math.round(w.ctl * 10) / 10 : null,
     atl: w.atl != null ? Math.round(w.atl * 10) / 10 : null,
     tsb: (w.ctl != null && w.atl != null) ? Math.round((w.ctl - w.atl) * 10) / 10 : null,
+    hrv: w.hrv != null ? Math.round(w.hrv * 10) / 10 : (w.hrv_rmssd != null ? Math.round(w.hrv_rmssd * 10) / 10 : null),
     rust_hr: w.restingHR ?? null,
     slaap_uren: w.sleepSecs != null ? Math.round(w.sleepSecs / 360) / 10 : null,
     gewicht: w.weight ?? null,
     stappen: w.steps ?? null,
     vo2max: w.vo2max ?? null,
   };
+}
+
+function buildCompactIntervals() {
+  const now = new Date();
+  const cutoff14 = new Date(now - 14 * 86400000).toISOString().split('T')[0];
+
+  const wellness = (intervalsCtx?.wellness || [])
+    .map(cleanWellness).filter(w => w.datum)
+    .sort((a,b) => a.datum.localeCompare(b.datum));
+  const activities = (intervalsCtx?.activities || [])
+    .map(cleanActivity).filter(a => a.datum)
+    .sort((a,b) => a.datum.localeCompare(b.datum));
+
+  if (!wellness.length && !activities.length) return 'Geen Intervals.icu data beschikbaar.';
+
+  const latestW = wellness[wellness.length - 1];
+  const latestA = activities[activities.length - 1];
+  const latestDate = [latestW?.datum, latestA?.datum].filter(Boolean).sort().pop();
+  let staleWarning = '';
+  if (latestDate) {
+    const hoursOld = (now - new Date(latestDate + 'T12:00:00')) / 3600000;
+    if (hoursOld > 28) staleWarning = `⚠️ Data is ${Math.round(hoursOld)}u oud — readiness-adviezen gebaseerd op verouderde data.\n`;
+  }
+
+  const load = latestW
+    ? `CTL ${latestW.ctl ?? '?'} · ATL ${latestW.atl ?? '?'} · TSB ${latestW.tsb != null ? (latestW.tsb > 0 ? '+' : '') + latestW.tsb : '?'}`
+    : 'Geen load-data';
+
+  let hrvLine = '';
+  const wHRV = wellness.filter(w => w.hrv != null);
+  if (wHRV.length >= 5) {
+    const last30 = wHRV.slice(-30);
+    const baseline = last30.reduce((s,w) => s + w.hrv, 0) / last30.length;
+    const last3 = wHRV.slice(-3);
+    const avg3d = last3.reduce((s,w) => s + w.hrv, 0) / last3.length;
+    const latestHRV = wHRV[wHRV.length - 1].hrv;
+    const diff = (avg3d - baseline) / baseline * 100;
+    let trend = 'stabiel', alert = '';
+    if (avg3d >= baseline * 1.05) { trend = 'stijgend'; alert = ' → supercompensatie, kwaliteitsblok mogelijk'; }
+    else if (avg3d <= baseline * 0.92) { trend = 'dalend'; alert = ' → herstelschuld, GEEN interval'; }
+    else if (avg3d <= baseline * 0.95) { trend = 'licht dalend'; alert = ' → voorzichtig, max Z2'; }
+    hrvLine = `HRV: ${latestHRV} ms (30d-gem: ${Math.round(baseline)} ms · 3d-gem: ${Math.round(avg3d)} ms · ${diff >= 0 ? '+' : ''}${diff.toFixed(1)}% · ${trend}${alert})`;
+  }
+
+  const snapParts = [];
+  if (latestW?.rust_hr) snapParts.push(`RHR ${latestW.rust_hr} bpm`);
+  if (latestW?.slaap_uren != null) {
+    const s14 = wellness.slice(-14).map(w => w.slaap_uren).filter(v => v != null);
+    const avg14 = s14.length > 1 ? ' (14d-gem: ' + (s14.reduce((a,v)=>a+v,0)/s14.length).toFixed(1) + 'u)' : '';
+    snapParts.push(`slaap ${latestW.slaap_uren}u${avg14}`);
+  }
+  if (latestW?.gewicht) snapParts.push(`gewicht ${latestW.gewicht} kg`);
+
+  const recent14 = activities.filter(a => a.datum >= cutoff14);
+  const older = activities.filter(a => a.datum < cutoff14);
+
+  const fmtAct = a => {
+    const hdr = `${a.datum} ${a.dag||''} ${a.type||''}${a.naam ? ' "' + a.naam + '"' : ''}`;
+    const stats = [
+      a.afstand_km ? `${a.afstand_km}km` : null,
+      a.duur_min ? `${a.duur_min}min` : null,
+      a.hr_gem ? `HR ${a.hr_gem}` : null,
+      a.training_load ? `TL ${a.training_load}` : null,
+      a.hoogtemeters ? `${a.hoogtemeters}m↑` : null,
+    ].filter(Boolean);
+    return hdr + (stats.length ? ' | ' + stats.join(' · ') : '');
+  };
+
+  const actLines = [...recent14].reverse().map(fmtAct);
+
+  let olderAgg = '';
+  if (older.length) {
+    const km = Math.round(older.reduce((s,a) => s + (a.afstand_km||0), 0));
+    const avgTL = Math.round(older.reduce((s,a) => s + (a.training_load||0), 0) / older.length);
+    olderAgg = `[Periode voor 14d: ${older.length} sessies · ${km} km · gem TL ${avgTL}]`;
+  }
+
+  const out = [staleWarning + load];
+  if (hrvLine) out.push(hrvLine);
+  if (snapParts.length) out.push(snapParts.join(' · '));
+  out.push('');
+  out.push('TRAININGEN (laatste 14d, meest recent eerst):');
+  if (actLines.length) out.push(...actLines);
+  else out.push('Geen activiteiten de afgelopen 14 dagen.');
+  if (olderAgg) out.push(olderAgg);
+
+  return out.join('\n');
 }
 
 // Trim array-items (nooit halverwege een object) totdat de JSON binnen maxChars

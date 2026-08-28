@@ -3392,14 +3392,15 @@ async function submitMessage() {
   try { await fetchIntervalsData(); } catch(e) {}
 
   try {
-    const model = document.getElementById('model-select').value || CONFIG.model || 'claude-haiku-4-5';
+    const model = document.getElementById('model-select').value || CONFIG.model || 'claude-haiku-4-5-20251001';
+    const isHeavy = /weekplan|schema|macroplan|periodisering/i.test(messages[messages.length-1]?.content || '');
     const res = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        max_tokens: 8000,
-        system: buildSystemPrompt(),
+        max_tokens: isHeavy ? 3000 : 2000,
+        system: buildSystemBlocks(),
         messages: messages.slice(-40)
       })
     });
@@ -3411,6 +3412,7 @@ async function submitMessage() {
 
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    if (data.usage) console.log('[COACH] tokens — input:', data.usage.input_tokens, '| output:', data.usage.output_tokens, '| cache_hit:', data.usage.cache_read_input_tokens ?? 0, '| cache_write:', data.usage.cache_creation_input_tokens ?? 0);
 
     const reply = data.content[0].text;
     messages.push({ role: 'assistant', content: reply });
@@ -4962,76 +4964,21 @@ Schrijf persoonlijk, Nederlands, max 300 woorden.`;
 /* ═══════════════════════════════════════════
    SYSTEM PROMPT
 ═══════════════════════════════════════════ */
-function buildSystemPrompt() {
+/* ── Statisch systeemblok (gecached via cache_control:ephemeral)
+   Bevat: persona, atleetprofiel, stijlregels, TSB/HRV-drempels.
+   GEEN datum, GEEN wellness-data, GEEN MEM — die veranderen elke call. ── */
+function _buildStaticSystem() {
   const naam = CONFIG.naam || 'Jule';
+  return `Je bent een persoonlijke marathoncoach voor ${naam}. Je spreekt Nederlands, bent direct en eerlijk, vermijdt vage adviezen.
 
-  const profiel = `# ATLEETPROFIEL
+# ATLEETPROFIEL
 Naam: ${naam}
 Leeftijd: ${CONFIG.leeftijd || '?'} jaar
 Gewicht: ${CONFIG.gewicht || '?'} kg
 Max hartslag: ${CONFIG.maxHR || '190'} bpm
 Hoofddoel: ${CONFIG.doel || 'Amsterdam Marathon sub-4:00'}
 Conditieniveau: ${CONFIG.conditie || '?'}
-${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}`;
-
-  // Wellness + activities
-  const wellnessClean = (intervalsCtx?.wellness || []).map(cleanWellness)
-    .sort((a,b) => (a.datum||'').localeCompare(b.datum||''));
-  const activitiesClean = (intervalsCtx?.activities || []).map(cleanActivity)
-    .sort((a,b) => (a.datum||'').localeCompare(b.datum||''));
-
-  const wellnessJson = intervalsCtx ? trimToFit(wellnessClean.slice(-42), 6000, true) : '[]';
-  const activitiesJson = intervalsCtx ? trimToFit([...activitiesClean].reverse(), 12000, false) : '[]';
-
-  // MEM context
-  const memParts = [];
-  if (MEM.macroplan) memParts.push('MACROPLAN:\n' + JSON.stringify(MEM.macroplan));
-  if (MEM.weekplannen?.length) memParts.push('RECENTE WEEKPLANNINGEN:\n' + JSON.stringify(MEM.weekplannen.slice(-3)));
-  if (MEM.checkins?.length) memParts.push('RECENTE CHECK-INS (subjectief gevoel + gewicht):\n' + JSON.stringify(MEM.checkins.slice(-4)));
-  if (MEM.flags?.filter(f=>!f.opgelost).length) {
-    memParts.push('AANDACHTSPUNTEN:\n' + JSON.stringify(MEM.flags.filter(f=>!f.opgelost)));
-  }
-  if (MEM.zones) memParts.push('HARTSLAGZONES (empirisch):\n' + JSON.stringify(MEM.zones));
-  const activeBlessures = (MEM.blessures || []).filter(b => b.status === 'actief');
-  if (activeBlessures.length) memParts.push('ACTIEVE BLESSURES:\n' + JSON.stringify(activeBlessures));
-  const recentKracht = (MEM.kracht?.sessies || []).slice(-5);
-  if (recentKracht.length) memParts.push('RECENTE KRACHTSESSIES:\n' + JSON.stringify(recentKracht));
-  if (_gearForPrompt.length) memParts.push('SCHOENDATA:\n' + JSON.stringify(_gearForPrompt));
-  const memCtx = memParts.join('\n\n');
-
-  // Strava analysis
-  let stravaTxt = '';
-  if (stravaAnalysis) {
-    const inzicht = computeTempoInzicht(stravaAnalysis.data?.pace_hr_correlatie, MEM.zones);
-    const inzichtTxt = inzicht ? `
-BEREKENDE TEMPOS VOOR ${naam.toUpperCase()} (automatisch afgeleid via interpolatie — gebruik DEZE getallen, niet generieke tabellen):
-${inzicht.marathonTempo ? `- Marathontempo (Z3 ~${inzicht.hrMarathon} bpm): ${inzicht.marathonTempo}/km → geschatte marathontijd ${inzicht.marathonTijd}` : ''}
-${inzicht.drempelTempo ? `- Drempeltraining (Z4 ~${inzicht.hrDrempel} bpm): ${inzicht.drempelTempo}/km` : ''}
-${inzicht.rustigTempo ? `- Rustige/herstelrun (Z2 ~${inzicht.hrRustig} bpm): ${inzicht.rustigTempo}/km` : ''}
-Datapunten: ${inzicht.dataPunten}
-
-INSTRUCTIE: Bovenstaande tempos zijn de feitelijke grenswaarden. Als de berekening bijv. marathontempo 5:10/km geeft, adviseer 5:10–5:20/km — NIET 5:30 "om veilig te zijn". De data IS de veiligheid.` : '';
-    stravaTxt = `\n\n# STRAVA STREAMANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
-${inzichtTxt}
-${JSON.stringify(stravaAnalysis.data, null, 2)}`;
-  }
-
-  // Week dates
-  const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
-  const today = new Date();
-  const dow = (today.getDay() + 6) % 7;
-  const weekLines = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - dow + i);
-    const dd = String(d.getDate()).padStart(2,'0');
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    weekLines.push(dagen[d.getDay()] + ' ' + dd + '-' + mm + '-' + d.getFullYear());
-  }
-
-  return `Je bent een persoonlijke marathoncoach voor ${naam}. Je spreekt Nederlands, bent direct en eerlijk, vermijdt vage adviezen.
-
-${profiel}
+${CONFIG.blessure ? 'Blessuregeschiedenis: ' + CONFIG.blessure : 'Geen bekende blessures'}
 
 # COACHSTIJL
 - Open met de kern, geen omhaal
@@ -5052,8 +4999,8 @@ ${profiel}
 - TSB als sturingsmiddel: kwaliteit bij TSB > 0, herstel bij TSB < -10.
 - Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen bij duidelijke reden.
 - Sla macroplan op als MACROPLAN_JSON: {...}
-- VERPLICHT bij elk weekschema: sluit af met WEEKPLAN_JSON: {"maandag": {"type": "...", "datum": "YYYY-MM-DD"}, "dinsdag": {...}, ...} — gebruik ALTIJD datums uit de kalendertabel hierboven
-- Sla aandachtspunten op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false}. Datum wordt automatisch toegevoegd — NOOIT relatieve tijdsaanduidingen in "omschrijving". VERPLICHT: bekijk bij elk gesprek de AANDACHTSPUNTEN in COACHGEHEUGEN — als een vlag ouder is dan zijn logische herstelvenster (bv. "vermoeidheid" na 7+ dagen rust), stuur dan FLAG_JSON met "opgelost": true om het te sluiten.
+- VERPLICHT bij elk weekschema: sluit af met WEEKPLAN_JSON: {"maandag": {"type": "...", "datum": "YYYY-MM-DD"}, "dinsdag": {...}, ...} — gebruik ALTIJD datums uit de kalendertabel in de context
+- Sla aandachtspunten op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false}. Datum wordt automatisch toegevoegd — NOOIT relatieve tijdsaanduidingen in "omschrijving". VERPLICHT: bekijk bij elk gesprek de AANDACHTSPUNTEN — als een vlag ouder is dan zijn logische herstelvenster, stuur dan FLAG_JSON met "opgelost": true.
 - Bij een week check-in: ga eerst in op de subjectieve check-in score + opmerkingen, vergelijk met objectieve TSB/HR/slaap, en geef een concreet advies voor de komende week.
 - Bij nieuwe empirische HR-zone data: sla op als ZONES_JSON: {"bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [...]}
 
@@ -5063,30 +5010,101 @@ TSB -5 tot +5: normale belasting
 TSB -10 tot -5: functionele vermoeidheid, bewaken
 TSB < -10: herstel prioriteren
 
-# OVERIGE WELLNESS-METRICS (slaap, rust_hr, gewicht, stappen)
-CTL/ATL/TSB zijn de primaire, objectieve maat — baseer je hoofdadvies daarop.
-Slaap/rust_hr/gewicht zijn ondersteunende signalen, geen losse oordelen:
-- Geef NOOIT een kwalificatie ("kort", "slecht", "hoog") zonder eigen baseline als referentie.
-- Vergelijk altijd met haar eigen recente gemiddelde uit de WELLNESS-data (bv. "6,5u ligt onder haar gemiddelde van 7,8u afgelopen 2 weken").
-- Geen eigen baseline beschikbaar? Noem dan een algemene richtlijn én zeg expliciet dat er te weinig data is.
+# HRV-DREMPELLOGICA (gebruik altijd persoonlijke 30d-baseline uit de context)
+- HRV 3d-gem ≥ 5% boven baseline → supercompensatie, kwaliteitsblok mogelijk
+- HRV 3d-gem ≤ 8% onder baseline → herstelschuld, GEEN interval tot terugkeer
+- HRV 3d-gem 5–8% onder baseline → voorzichtig, max Z2
+- Rapporteer HRV altijd als: "Vandaag X ms (30d-gem Y ms, 3d-gem Z ms, trend: ...)"
+- Gebruik NOOIT populatiegemiddelden — altijd haar eigen baseline
+
+# OVERIGE WELLNESS-METRICS (slaap, rust_hr, gewicht)
+CTL/ATL/TSB zijn de primaire maat — baseer je hoofdadvies daarop.
+Slaap/rust_hr/gewicht zijn ondersteunende signalen:
+- Geef NOOIT een kwalificatie zonder eigen baseline als referentie.
+- Vergelijk altijd met haar eigen recente gemiddelde (staat in de context, bv. "14d-gem: 7,8u").
+- Geen baseline beschikbaar? Noem een algemene richtlijn én zeg dat er te weinig data is.
 - Bij twijfel: laat de metric weg of benoem expliciet dat conclusies onzeker zijn.
 
-# TRAININGSDATA (Intervals.icu) — ENIGE bron voor trainingsgeschiedenis
-Verzin NOOIT activiteiten, datums of cijfers die hier niet instaan.
-Gebruik voor de dagnaam ALTIJD het veld "dag" — reken dit nooit zelf uit.
+# TRAININGSDATA-REGELS
+Verzin NOOIT activiteiten, datums of cijfers die niet in de context staan.
+Gebruik voor de dagnaam ALTIJD het veld "dag" — reken dit nooit zelf uit.`;
+}
 
-WELLNESS (laatste 42 dagen):
-${wellnessJson}
+/* ── Dynamisch contextblok (NIET gecached — verandert elke call)
+   Bevat: compacte Intervals-data, MEM, Strava, datum/week. ── */
+function _buildDynamicContext() {
+  const naam = CONFIG.naam || 'Jule';
 
-ACTIVITEITEN (meest recent eerst):
-${activitiesJson}${stravaTxt}
+  // Compacte trainingsdata (vervangt raw JSON blobs)
+  const intervalsData = intervalsCtx ? buildCompactIntervals() : 'Geen Intervals.icu data geladen.';
 
-${memCtx ? '# COACHGEHEUGEN (gebruik voor planning/voorkeuren — NIET als bron voor wat er getraind is, dat staat in TRAININGSDATA)\n' + memCtx : ''}
+  // Strava analyse — compacte weergave
+  let stravaTxt = '';
+  if (stravaAnalysis) {
+    const inzicht = computeTempoInzicht(stravaAnalysis.data?.pace_hr_correlatie, MEM.zones);
+    const inzichtTxt = inzicht ? `
+BEREKENDE TEMPOS VOOR ${naam.toUpperCase()} (interpolatie — gebruik DEZE getallen, niet generieke tabellen):
+${inzicht.marathonTempo ? `- Marathon (Z3 ~${inzicht.hrMarathon} bpm): ${inzicht.marathonTempo}/km → ${inzicht.marathonTijd}` : ''}
+${inzicht.drempelTempo ? `- Drempel (Z4 ~${inzicht.hrDrempel} bpm): ${inzicht.drempelTempo}/km` : ''}
+${inzicht.rustigTempo ? `- Rustig (Z2 ~${inzicht.hrRustig} bpm): ${inzicht.rustigTempo}/km` : ''}
+Datapunten: ${inzicht.dataPunten}
+INSTRUCTIE: Als de data bijv. marathontempo 5:10/km geeft, adviseer 5:10–5:20/km — NIET conservatiever.` : '';
+    stravaTxt = `\n\n# STRAVA ANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
+${inzichtTxt}
+pace_hr_correlatie: ${JSON.stringify(stravaAnalysis.data?.pace_hr_correlatie)}`;
+  }
 
-Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+  // MEM context
+  const memParts = [];
+  if (MEM.macroplan) memParts.push('MACROPLAN:\n' + JSON.stringify(MEM.macroplan));
+  if (MEM.weekplannen?.length) memParts.push('RECENTE WEEKPLANNINGEN:\n' + JSON.stringify(MEM.weekplannen.slice(-3)));
+  if (MEM.checkins?.length) memParts.push('RECENTE CHECK-INS:\n' + JSON.stringify(MEM.checkins.slice(-4)));
+  const openFlags = (MEM.flags || []).filter(f => !f.opgelost);
+  if (openFlags.length) memParts.push('AANDACHTSPUNTEN:\n' + JSON.stringify(openFlags));
+  if (MEM.zones) memParts.push('HARTSLAGZONES:\n' + JSON.stringify(MEM.zones));
+  const activeBlessures = (MEM.blessures || []).filter(b => b.status === 'actief');
+  if (activeBlessures.length) memParts.push('ACTIEVE BLESSURES:\n' + JSON.stringify(activeBlessures));
+  const recentKracht = (MEM.kracht?.sessies || []).slice(-5);
+  if (recentKracht.length) memParts.push('RECENTE KRACHTSESSIES:\n' + JSON.stringify(recentKracht));
+  if (_gearForPrompt.length) memParts.push('SCHOENDATA:\n' + JSON.stringify(_gearForPrompt));
+  const memCtx = memParts.join('\n\n');
+
+  // Week dates
+  const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7;
+  const weekLines = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - dow + i);
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    weekLines.push(dagen[d.getDay()] + ' ' + dd + '-' + mm + '-' + d.getFullYear());
+  }
+
+  return `# TRAININGSDATA (Intervals.icu) — ENIGE bron voor trainingsgeschiedenis
+${intervalsData}${stravaTxt}
+
+${memCtx ? '# COACHGEHEUGEN (planning/voorkeuren — NIET als bron voor wat er getraind is)\n' + memCtx + '\n\n' : ''}Vandaag: ${today.toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
 Huidige week:
 ${weekLines.join('\n')}
 KALENDERREGEL: Gebruik bovenstaande datums voor alle dag-naar-datum verwijzingen. Reken NOOIT zelf dag-naar-datum uit.`;
+}
+
+/* Bouw system-array voor de API:
+   [0] statisch blok met cache_control → Anthropic cacht dit ~5 min
+   [1] dynamisch blok zonder cache → altijd vers
+*/
+function buildSystemBlocks() {
+  return [
+    { type: 'text', text: _buildStaticSystem(), cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: _buildDynamicContext() },
+  ];
+}
+
+/* Fallback string-versie voor bestaand gebruik */
+function buildSystemPrompt() {
+  return _buildStaticSystem() + '\n\n' + _buildDynamicContext();
 }
 
 /* ═══════════════════════════════════════════

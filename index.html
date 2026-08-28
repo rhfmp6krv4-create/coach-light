@@ -1371,19 +1371,17 @@ function cleanHrZones(athlete) {
   };
 }
 
-function buildSystemPrompt() {
+function _buildStaticSystem() {
   const conditieLabels = {
     beginner: 'Beginner (eerste marathon)',
     sub5: 'Sub-5 uur', sub4_30: 'Sub-4:30',
     sub4: 'Sub-4 uur', sub3_30: 'Sub-3:30', sub3: 'Sub-3 uur'
   };
-
   const ervaringLabels = {'<1jaar':'<1 jaar', '1-3jaar':'1-3 jaar', '3-5jaar':'3-5 jaar', '>5jaar':'>5 jaar'};
   const volLabels = {'<20km':'<20 km/week', '20-40km':'20-40 km/week', '40-60km':'40-60 km/week', '>60km':'>60 km/week'};
   const werkLabels = {'kantoorbaan_vast':'Kantoorbaan vaste tijden', 'kantoorbaan_flex':'Kantoorbaan flexibel', 'ploegendienst':'Ploegendienst', 'thuis':'Thuis/zelfstandig'};
 
   const hrZones = cleanHrZones(intervalsCtx?.athlete);
-
   const profiel = `# ATLEETPROFIEL
 Naam: ${CONFIG.naam}
 Leeftijd: ${CONFIG.leeftijd} jaar
@@ -1401,49 +1399,6 @@ ${hrZones ? `
 HARTSLAGZONES (Intervals.icu, ${hrZones.lthr ? 'LTHR ' + hrZones.lthr + ' bpm, ' : ''}max ${hrZones.max_hr} bpm):
 ${hrZones.zones.map(z => `- ${z.zone}: tot ${z.tot_bpm} bpm`).join('\n')}` : ''}`;
 
-  // Map naar schone, vaste velden (zie cleanActivity/cleanWellness), sorteer dan
-  // expliciet op datum — onafhankelijk van de volgorde die de Intervals.icu API
-  // teruggeeft — zodat trimToFit altijd de juiste (oudste/nieuwste) kant afknipt.
-  const wellnessClean = (intervalsCtx?.wellness || []).map(cleanWellness)
-    .sort((a, b) => (a.datum || '').localeCompare(b.datum || ''));
-  const activitiesClean = (intervalsCtx?.activities || []).map(cleanActivity)
-    .sort((a, b) => (a.datum || '').localeCompare(b.datum || ''));
-
-  // wellnessClean is oudste -> nieuwste. Pak laatste 42 dagen, en trim zo nodig de oudste eraf (trimFromStart=true).
-  const wellnessJson = intervalsCtx ? trimToFit(wellnessClean.slice(-42), 6000, true) : '[]';
-  // activitiesClean is oudste -> nieuwste. Voor "meest recent eerst" draaien we om;
-  // trim zo nodig de oudste (= laatste na omdraaien) eraf (trimFromStart=false).
-  const activitiesJson = intervalsCtx ? trimToFit(activitiesClean.reverse(), 12000, false) : '[]';
-
-  const data = intervalsCtx ? `\n\n# TRAININGSDATA (Intervals.icu)
-Dit is de ENIGE bron voor de trainingsgeschiedenis. Gebruik uitsluitend deze data om vragen over trainingen/activiteiten/archief te beantwoorden. Verzin NOOIT activiteiten, datums, afstanden of andere cijfers die hier niet letterlijk in staan. Als iets niet (meer) in deze data staat (bv. omdat het buiten de getoonde periode valt), zeg dat dan expliciet — beweer nooit dat iemand "niet getraind heeft" als dat niet uit deze data blijkt. Gebruik voor de dagnaam (maandag/dinsdag/etc.) ALTIJD het veld "dag" — reken dit nooit zelf uit uit de datum, dat gaat vaak mis.
-
-WELLNESS (laatste weken — ctl/atl/tsb/rust_hr/slaap_uren/gewicht/stappen/vo2max):
-${wellnessJson}
-
-ACTIVITEITEN (meest recent eerst):
-${activitiesJson}` : '\n\n# TRAININGSDATA\nNog niet geladen.';
-
-  const memCtx = getMemCtx();
-  const flagInstructie = `- Als iemand iets noemt dat relevant is voor toekomstige planning (blessure, pijn, ziekte, drukke periode op werk, vakantie, etc.), sla dit op als FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false} (gebruik dezelfde "tag" om een eerder punt te updaten/op te lossen door "opgelost": true te zetten). De datum wordt automatisch toegevoegd — zet daarom NOOIT een dag van de week, "vandaag", "gisteren" of een andere relatieve tijdsaanduiding in "omschrijving" zelf (die wordt op den duur fout, want dezelfde dagnaam komt elke week terug). Schrijf objectief, bv. "buikgriep" niet "buikgriep was woensdag".
-- Bij elk gesprek: bekijk de bestaande AANDACHTSPUNTEN en hun "datum". Tijdelijke/acute punten (ziekte, eenmalige slechte nacht, een kortdurende blessure-vlaag e.d.) die qua aard allang voorbij hun eigen hersteltermijn zijn (bv. een omschrijving noemt "48u" en het is inmiddels >48u later, of het is een verkoudheid/griep van >1-2 weken geleden) MOET je automatisch op "opgelost": true zetten via een nieuwe FLAG_JSON met dezelfde tag — wacht niet tot de gebruiker dit zelf meldt. Structurele/blijvende punten (chronische blessuregeschiedenis, races, doelkeuzes) blijven gewoon staan.
-- Noem dit niet expliciet in je antwoord, het is alleen voor je eigen geheugen.
-- Als er nieuwe empirische data beschikbaar is om hartslagzones te verfijnen (bijv. uit Strava streams of een test), sla de bijgewerkte zones op als ZONES_JSON: { "bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [ { "zone": "Z1", "naam": "...", "hr_max": N, "tempo_min_km": "M:SS" }, ... ], "notitie": "..." }. Gebruik daarna ALTIJD de HARTSLAGZONES uit het coachgeheugen — NOOIT generieke tabellen.`;
-  const approach = `
-# COACHFILOSOFIE
-- Prestatiegericht en data-gedreven: gebruik ALTIJD de empirische pace-HR data als basis voor tempo-adviezen. Nooit generieke tabellen.
-- Tempo-advies werkwijze: kijk eerst naar de BEREKENDE TEMPOS in de Strava-sectie. Geef die tempos, niet een conservatieve marge daarbovenop.
-- Als de data bijv. marathontempo 5:10/km aangeeft: adviseer 5:10–5:20/km. NIET 5:30 "voor de zekerheid".
-- Marathonpotentie beoordelen op basis van pace-HR verhouding — NIET op basis van absolute tijden of afstanden. Een atleet die 4:45/km loopt bij 153 bpm is fitter dan generieke tabellen suggereren.
-- Volumeopbouw: max ~10% per week, maar afwijken mag als CTL/ATL/TSB en gevoel het toelaten.
-- TSB als sturingsmiddel: plan kwaliteit bij TSB > 0, herstel bij TSB < -10.
-- Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen adviseren bij duidelijke reden, niet als standaardreactie.
-- Fueling bij lange duur (>75 min): koolhydraten elke 30-40 min.
-- Als de atleet aangeeft meer aan te kunnen: neem dat serieus. De atleet kent haar eigen lichaam — pas het advies aan.
-- Sla macroplan op als MACROPLAN_JSON: {...}
-- VERPLICHT bij elk weekschema: sluit af met WEEKPLAN_JSON: {"maandag": {"type": "...", "datum": "YYYY-MM-DD"}, "dinsdag": {...}, ...} — gebruik ALTIJD datums uit de kalendertabel hierboven
-${flagInstructie}`;
-
   return `Je bent een persoonlijke marathoncoach. Je spreekt Nederlands, bent direct en eerlijk, vermijdt vage adviezen.
 
 ${profiel}
@@ -1454,7 +1409,7 @@ ${profiel}
 - Benoem alleen 2-3 belangrijkste factoren per antwoord
 - Eindig met een duidelijke coachbeslissing of actie
 - Gebruik TSB/CTL/ATL uit Intervals voor herstel/belasting interpretatie
-- Als een vraag lijkt op een eerdere vraag in het gesprek: ga ervan uit dat er nieuwe context is (bijv. nieuwe voedingsdata, verstreken tijd) — reageer inhoudelijk, nooit met "je hebt dit al gevraagd" of varianten daarop
+- Als een vraag lijkt op een eerdere vraag in het gesprek: ga ervan uit dat er nieuwe context is — reageer inhoudelijk, nooit met "je hebt dit al gevraagd"
 - Schrijf NOOIT SQL — je hebt geen database-toegang. Gebruik alleen de data die je al in je context hebt.
 
 # TSB INTERPRETATIE
@@ -1463,57 +1418,87 @@ TSB -5 tot +5: normale belasting
 TSB -10 tot -5: functionele vermoeidheid, bewaken
 TSB < -10: herstel prioriteren
 
-# OVERIGE WELLNESS-METRICS (slaap, rust_hr, HRV, gewicht, stappen)
-CTL/ATL/TSB zijn de primaire, objectieve maat voor belasting en herstel — baseer je hoofdadvies daarop.
-Slaap/rust_hr/HRV/etc. zijn ondersteunende signalen, geen losse oordelen:
-- Geef NOOIT een kwalificatie ("kort", "slecht", "te weinig", "hoog", "laag") zonder onderbouwing.
-- Onderbouw door te vergelijken met haar eigen recente gemiddelde uit de WELLNESS-data hierboven (bv. "8,4u ligt onder je gemiddelde van de afgelopen 2 weken van 9,1u").
-- Is er geen eigen baseline (te weinig data of te wisselend), gebruik dan een algemeen aanvaarde richtlijn en noem die expliciet (bv. "7-9 uur is de algemene aanbeveling voor volwassenen — 8,4u valt daar prima binnen").
-- Bij twijfel: noem de metric niet, of benoem expliciet dat er te weinig data is om iets te concluderen.
-${approach}${data}
-${memCtx ? '\n\n# COACHGEHEUGEN (context uit eerdere gesprekken — gebruik dit voor planning/voorkeuren, NIET als bron voor "wat is er getraind", dat staat altijd in TRAININGSDATA hierboven)\n' + memCtx : ''}
-${(() => {
-  if (!stravaAnalysis) return '';
-  const inzicht = computeTempoInzicht(stravaAnalysis.data?.pace_hr_correlatie, MEM.zones);
-  const inzichtTxt = inzicht ? `
-BEREKENDE TEMPOS VOOR HAAR (automatisch afgeleid via interpolatie — gebruik DEZE getallen, niet generieke tabellen):
-${inzicht.marathonTempo ? `- Marathontempo (Z3-hartslag ~${inzicht.hrMarathon} bpm): ${inzicht.marathonTempo}/km → geschatte marathontijd ${inzicht.marathonTijd}` : '- Marathontempo: onvoldoende data in Z3-range'}
-${inzicht.drempelTempo  ? `- Drempeltraining (Z4 ~${inzicht.hrDrempel} bpm): ${inzicht.drempelTempo}/km` : ''}
-${inzicht.rustigTempo   ? `- Rustige/herstelrun (Z2 ~${inzicht.hrRustig} bpm): ${inzicht.rustigTempo}/km` : '- Rustig tempo: onvoldoende data in Z2-range (voeg een easy run toe voor betere calibratie)'}
-Gebruikte datapunten: ${inzicht.dataPunten}
+# HRV-DREMPELLOGICA (gebruik altijd persoonlijke 30d-baseline uit de context)
+- HRV 3d-gem ≥ 5% boven baseline → supercompensatie, kwaliteitsblok mogelijk
+- HRV 3d-gem ≤ 8% onder baseline → herstelschuld, GEEN interval tot terugkeer
+- HRV 3d-gem 5–8% onder baseline → voorzichtig, max Z2
+- Rapporteer HRV altijd als: "Vandaag X ms (30d-gem Y ms, 3d-gem Z ms, trend: ...)"
+- Gebruik NOOIT populatiegemiddelden — altijd haar eigen baseline
 
-INSTRUCTIE: Bovenstaande tempos zijn de feitelijke grenswaarden voor HAAR. Als de berekening bijv. marathontempo 5:10/km geeft, adviseer dan 5:10–5:20/km — niet 5:30–5:45 "om veilig te zijn". De data IS de veiligheid.` : '';
-  return `\n\n# STRAVA STREAMANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
-Per-seconde streamdata van Strava, verwerkt tot blokanalyse en empirische pace-HR correlatie.
+# OVERIGE WELLNESS-METRICS (slaap, rust_hr, gewicht, stappen)
+CTL/ATL/TSB zijn de primaire maat voor belasting en herstel — baseer je hoofdadvies daarop.
+Slaap/rust_hr/HRV/etc. zijn ondersteunende signalen:
+- Geef NOOIT een kwalificatie zonder onderbouwing met haar eigen baseline.
+- Baseline staat in de context (bv. "14d-gem: 7,8u"). Als er geen baseline is, gebruik een algemene richtlijn én zeg dat expliciet.
+- Bij twijfel: noem de metric niet, of benoem dat er te weinig data is.
+
+# COACHFILOSOFIE
+- Prestatiegericht en data-gedreven: gebruik ALTIJD de empirische pace-HR data. Nooit generieke tabellen.
+- Als de data bijv. marathontempo 5:10/km geeft: adviseer 5:10–5:20/km. NIET 5:30 "voor de zekerheid".
+- Marathonpotentie op basis van pace-HR verhouding — NIET op absolute tijden.
+- Volumeopbouw: max ~10% per week, maar afwijken mag als CTL/ATL/TSB en gevoel het toelaten.
+- TSB als sturingsmiddel: kwaliteit bij TSB > 0, herstel bij TSB < -10.
+- Bij pijnsignalen: analyseer (acuut vs. structureel). Rust alleen bij duidelijke reden.
+- Fueling bij lange duur (>75 min): koolhydraten elke 30-40 min.
+- Als de atleet aangeeft meer aan te kunnen: neem dat serieus.
+- Sla macroplan op als MACROPLAN_JSON: {...}
+- VERPLICHT bij elk weekschema: sluit af met WEEKPLAN_JSON: {"maandag": {"type": "...", "datum": "YYYY-MM-DD"}, ...} — gebruik ALTIJD datums uit de kalendertabel in de context
+- FLAG_JSON: {"tag": "korte-code", "omschrijving": "...", "opgelost": false} — NOOIT relatieve tijdsaanduidingen in omschrijving. Datum wordt automatisch toegevoegd.
+- Bij elk gesprek: auto-sluit vakken die voorbij hun hersteltermijn zijn via FLAG_JSON met "opgelost": true.
+- ZONES_JSON: {"bron": "...", "calibratie_datum": "YYYY-MM-DD", "zones": [...]} — gebruik ALTIJD coachgeheugen-zones, nooit generieke tabellen.
+
+# TRAININGSDATA-REGELS
+Verzin NOOIT activiteiten, datums of cijfers die niet in de context staan. Gebruik voor de dagnaam ALTIJD het veld "dag".`;
+}
+
+function _buildDynamicContext() {
+  const intervalsData = intervalsCtx ? buildCompactIntervals() : 'Geen Intervals.icu data geladen.';
+
+  let stravaTxt = '';
+  if (stravaAnalysis) {
+    const inzicht = computeTempoInzicht(stravaAnalysis.data?.pace_hr_correlatie, MEM.zones);
+    const inzichtTxt = inzicht ? `
+BEREKENDE TEMPOS VOOR HAAR (interpolatie — gebruik DEZE getallen):
+${inzicht.marathonTempo ? `- Marathon (Z3 ~${inzicht.hrMarathon} bpm): ${inzicht.marathonTempo}/km → ${inzicht.marathonTijd}` : '- Marathon: onvoldoende data in Z3-range'}
+${inzicht.drempelTempo  ? `- Drempel (Z4 ~${inzicht.hrDrempel} bpm): ${inzicht.drempelTempo}/km` : ''}
+${inzicht.rustigTempo   ? `- Rustig (Z2 ~${inzicht.hrRustig} bpm): ${inzicht.rustigTempo}/km` : '- Rustig: onvoldoende Z2-data'}
+Datapunten: ${inzicht.dataPunten}
+INSTRUCTIE: Adviseer het berekende tempo ± 10s/km — NOOIT conservatiever.` : '';
+    stravaTxt = `\n\n# STRAVA ANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
 ${inzichtTxt}
+pace_hr_correlatie: ${JSON.stringify(stravaAnalysis.data?.pace_hr_correlatie)}`;
+  }
 
-TEMPO-ADVIES PROTOCOL — verplicht bij elk schema of tempo-advies:
-1. Lees de pace_hr_correlatie hieronder
-2. Bepaal welke HR-zone van toepassing is
-3. Lees (of interpoleer) welk tempo daarmee overeenkomt voor HAAR
-4. Gebruik DAT tempo — niet een veiligheidsmarge daar bovenop
+  const memCtx = getMemCtx();
 
-${JSON.stringify(stravaAnalysis.data, null, 2)}`;
-})()}
-
-Vandaag: ${new Date().toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
-${(() => {
   const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
   const today = new Date();
-  // Maandag als weekstart (0=ma, 6=zo)
-  const dow = (today.getDay() + 6) % 7; // 0=ma, 1=di, ..., 6=zo
+  const dow = (today.getDay() + 6) % 7;
   const weekLines = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - dow + i);
-    const dagNaam = dagen[(d.getDay())];
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    weekLines.push(dagNaam + ' ' + dd + '-' + mm + '-' + d.getFullYear());
+    weekLines.push(dagen[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + d.getFullYear());
   }
-  return 'Huidige week:\n' + weekLines.join('\n');
-})()}
-KALENDERREGEL: Gebruik bovenstaande datums voor alle dag-naar-datum verwijzingen in weekplannen en schema's. Reken NOOIT zelf dag-naar-datum uit — gebruik altijd de tabel hierboven.`;
+
+  return `# TRAININGSDATA (Intervals.icu) — ENIGE bron voor trainingsgeschiedenis
+${intervalsData}${stravaTxt}
+
+${memCtx ? '# COACHGEHEUGEN (planning/voorkeuren — NIET als bron voor trainingsgeschiedenis)\n' + memCtx + '\n\n' : ''}Vandaag: ${today.toLocaleDateString('nl-NL', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}
+Huidige week:
+${weekLines.join('\n')}
+KALENDERREGEL: Gebruik bovenstaande datums voor dag-naar-datum verwijzingen. Reken NOOIT zelf dag-naar-datum uit.`;
+}
+
+function buildSystemBlocks() {
+  return [
+    { type: 'text', text: _buildStaticSystem(), cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: _buildDynamicContext() },
+  ];
+}
+
+function buildSystemPrompt() {
+  return _buildStaticSystem() + '\n\n' + _buildDynamicContext();
 }
 
 // ── STRAVA ──
@@ -1747,20 +1732,20 @@ async function submit() {
   await fetchIntervalsData();
 
   try {
+    const isHeavy = /weekplan|schema|macroplan|periodisering/i.test(messages[messages.length-1]?.content || '');
     const res = await fetch('https://coach-light-proxy.2db96fhr58.workers.dev', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: modelSelect.value,
-        max_tokens: 1500,
-        system: buildSystemPrompt(),
+        max_tokens: isHeavy ? 3000 : 2000,
+        system: buildSystemBlocks(),
         messages
       })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
+    if (data.usage) console.log('[COACH] tokens — input:', data.usage.input_tokens, '| output:', data.usage.output_tokens, '| cache_hit:', data.usage.cache_read_input_tokens ?? 0, '| cache_write:', data.usage.cache_creation_input_tokens ?? 0);
     const reply = data.content[0].text;
     messages.push({ role: 'assistant', content: reply });
     parseCoachOutput(reply);

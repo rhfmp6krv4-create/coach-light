@@ -1727,6 +1727,7 @@ let currentTab = 'home';
 async function sbSave(dataType, content) {
   const cacheKey = 'sb-cache-' + dataType;
   const serialised = JSON.stringify(content);
+  const userKey = CONFIG.intervalsId || _getDeviceId();
   try {
     await fetch(SB_URL + '/rest/v1/coach_light_data', {
       method: 'POST',
@@ -1737,7 +1738,7 @@ async function sbSave(dataType, content) {
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
       body: JSON.stringify({
-        user_key: CONFIG.intervalsId,
+        user_key: userKey,
         data_type: dataType,
         content: serialised
       })
@@ -1751,9 +1752,10 @@ async function sbSave(dataType, content) {
 
 async function sbLoad(dataType) {
   const cacheKey = 'sb-cache-' + dataType;
+  const userKey = CONFIG.intervalsId || _getDeviceId();
   try {
     const r = await fetch(
-      SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(CONFIG.intervalsId) +
+      SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(userKey) +
       '&data_type=eq.' + encodeURIComponent(dataType) + '&select=content&order=id.desc&limit=1',
       { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
     );

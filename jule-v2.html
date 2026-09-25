@@ -5431,14 +5431,15 @@ async function checkStravaConnection() {
     const rows = r.ok ? await r.json() : [];
     if (rows.length > 0) {
       const tok = rows[0].content;
-      _stravaAccessToken = tok?.access_token || null;
+      const tokenExpired = tok?.expires_at && tok.expires_at < Math.floor(Date.now() / 1000);
+      _stravaAccessToken = tokenExpired ? null : (tok?.access_token || null);
       stravaCtx = { connected: true, athlete_name: tok?.athlete_name || 'Strava' };
       updateStravaStatus();
-      // Auto-refresh als data ouder is dan 7 dagen of ontbreekt
-      const isStale = !stravaAnalysis || !stravaAnalysis.datum ||
+      // Auto-refresh als data ouder is dan 7 dagen, ontbreekt, of token verlopen is
+      const isStale = tokenExpired || !stravaAnalysis || !stravaAnalysis.datum ||
         (new Date() - new Date(stravaAnalysis.datum)) > 7 * 86400000;
       if (isStale) {
-        refreshStravaAnalysis(false); // achtergrond, geen feedback
+        refreshStravaAnalysis(false); // achtergrond: vernieuwt token server-side en analyse
       }
     } else {
       updateStravaStatus();
@@ -5447,16 +5448,34 @@ async function checkStravaConnection() {
 }
 
 // Fetch all runs from last 6 months from Strava API (one call, up to 100 activities).
-// Caches result in _stravaActivities.
+// Caches result in _stravaActivities. On 401, refreshes token via Edge Function and retries once.
 async function fetchStravaActivities() {
   if (_stravaActivities !== null) return _stravaActivities;
   if (!_stravaAccessToken) { _stravaActivities = []; return []; }
-  try {
+  const doFetch = async (token) => {
     const sixMonthsAgo = Math.floor((Date.now() - 180 * 86400000) / 1000);
-    const r = await fetch(
+    return fetch(
       'https://www.strava.com/api/v3/athlete/activities?per_page=100&after=' + sixMonthsAgo,
-      { headers: { 'Authorization': 'Bearer ' + _stravaAccessToken } }
+      { headers: { 'Authorization': 'Bearer ' + token } }
     );
+  };
+  try {
+    let r = await doFetch(_stravaAccessToken);
+    if (r.status === 401 && CONFIG.intervalsId) {
+      // Token expired — trigger server-side refresh via analyze-activity-light, then re-read token
+      try {
+        await fetch(SB_URL + '/functions/v1/analyze-activity-light?user_key=' + encodeURIComponent(CONFIG.intervalsId),
+          { headers: { 'Authorization': 'Bearer ' + SB_KEY } });
+        const tr = await fetch(
+          SB_URL + '/rest/v1/coach_light_data?user_key=eq.' + encodeURIComponent(CONFIG.intervalsId) + '&data_type=eq.strava_tokens&select=content',
+          { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } });
+        const rows = tr.ok ? await tr.json() : [];
+        if (rows.length) {
+          _stravaAccessToken = rows[0].content?.access_token || _stravaAccessToken;
+          r = await doFetch(_stravaAccessToken);
+        }
+      } catch(e) {}
+    }
     if (!r.ok) { _stravaActivities = []; return []; }
     const all = await r.json();
     _stravaActivities = (Array.isArray(all) ? all : []).filter(a =>
@@ -5568,8 +5587,8 @@ async function init() {
     try { CONFIG = JSON.parse(stored); } catch(e) {}
   }
 
-  // Validate required fields
-  if (!CONFIG.intervalsId || !CONFIG.intervalsKey || !CONFIG.claudeKey) {
+  // Validate required fields (claudeKey no longer needed — Worker holds the key)
+  if (!CONFIG.intervalsId || !CONFIG.intervalsKey) {
     document.getElementById('no-config').style.display = 'flex';
     return;
   }

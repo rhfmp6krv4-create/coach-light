@@ -3392,6 +3392,8 @@ async function submitMessage() {
 
   // Refresh intervals data on each message
   try { await fetchIntervalsData(); } catch(e) {}
+  // Fetch Strava activities if not yet loaded and Strava is connected
+  if (_stravaAccessToken && !_stravaActivities?.length) fetchStravaActivities().catch(() => {});
 
   try {
     const model = document.getElementById('model-select').value || CONFIG.model || 'claude-haiku-4-5-20251001';
@@ -5032,13 +5034,45 @@ Verzin NOOIT activiteiten, datums of cijfers die niet in de context staan.
 Gebruik voor de dagnaam ALTIJD het veld "dag" — reken dit nooit zelf uit.`;
 }
 
+/* Compacte weergave van Strava activiteiten als vervanging voor Intervals.icu */
+function buildCompactStrava() {
+  const acts = (_stravaActivities || []).slice().sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+  if (!acts.length) return 'Geen Strava activiteiten geladen.';
+  const now = new Date();
+  const lines14 = [];
+  const older = [];
+  for (const a of acts) {
+    const d = new Date(a.start_date);
+    const daysAgo = Math.floor((now - d) / 86400000);
+    const date = d.toISOString().split('T')[0];
+    const km = (a.distance / 1000).toFixed(1);
+    const min = Math.floor(a.moving_time / 60);
+    const pace = a.distance > 0 ? (a.moving_time / (a.distance / 1000) / 60) : 0;
+    const paceStr = pace > 0 ? Math.floor(pace) + ':' + String(Math.round((pace % 1) * 60)).padStart(2,'0') : '?';
+    const hr = a.average_heartrate ? Math.round(a.average_heartrate) + 'bpm' : '';
+    const elev = a.total_elevation_gain ? '+' + Math.round(a.total_elevation_gain) + 'm' : '';
+    const name = a.name || 'Run';
+    const row = `${date} | ${name} | ${km}km ${min}min @${paceStr}/km ${hr} ${elev}`.trim();
+    if (daysAgo <= 14) lines14.push(row);
+    else older.push({ km: parseFloat(km), tl: a.suffer_score || 0 });
+  }
+  let out = `## Strava runs (laatste 14 dagen)\n${lines14.length ? lines14.join('\n') : 'Geen runs'}`;
+  if (older.length) {
+    const totalKm = older.reduce((s, x) => s + x.km, 0).toFixed(0);
+    out += `\n\nOudere periode (${older.length} runs, ${totalKm}km totaal)`;
+  }
+  return out;
+}
+
 /* ── Dynamisch contextblok (NIET gecached — verandert elke call)
    Bevat: compacte Intervals-data, MEM, Strava, datum/week. ── */
 function _buildDynamicContext() {
   const naam = CONFIG.naam || 'Jule';
 
-  // Compacte trainingsdata (vervangt raw JSON blobs)
-  const intervalsData = intervalsCtx ? buildCompactIntervals() : 'Geen Intervals.icu data geladen.';
+  // Compacte trainingsdata — Intervals.icu primair, Strava als fallback
+  const intervalsData = intervalsCtx
+    ? buildCompactIntervals()
+    : (_stravaActivities?.length ? buildCompactStrava() : 'Geen trainingsdata geladen.');
 
   // Strava analyse — compacte weergave
   let stravaTxt = '';
@@ -5051,9 +5085,20 @@ ${inzicht.drempelTempo ? `- Drempel (Z4 ~${inzicht.hrDrempel} bpm): ${inzicht.dr
 ${inzicht.rustigTempo ? `- Rustig (Z2 ~${inzicht.hrRustig} bpm): ${inzicht.rustigTempo}/km` : ''}
 Datapunten: ${inzicht.dataPunten}
 INSTRUCTIE: Als de data bijv. marathontempo 5:10/km geeft, adviseer 5:10–5:20/km — NIET conservatiever.` : '';
+    const d = stravaAnalysis.data || {};
+    const actFields = [];
+    if (d.distance) actFields.push(`afstand: ${(d.distance/1000).toFixed(2)}km`);
+    if (d.moving_time) { const m = Math.floor(d.moving_time/60); actFields.push(`duur: ${m}min`); }
+    if (d.average_heartrate) actFields.push(`gem. HR: ${Math.round(d.average_heartrate)}bpm`);
+    if (d.max_heartrate) actFields.push(`max HR: ${Math.round(d.max_heartrate)}bpm`);
+    if (d.average_speed) actFields.push(`gem. snelheid: ${(d.average_speed*3.6).toFixed(1)}km/h`);
+    if (d.total_elevation_gain) actFields.push(`hoogteverschil: +${Math.round(d.total_elevation_gain)}m`);
+    if (d.suffer_score) actFields.push(`suffer score: ${d.suffer_score}`);
+    if (d.perceived_exertion) actFields.push(`RPE: ${d.perceived_exertion}`);
     stravaTxt = `\n\n# STRAVA ANALYSE — ${stravaAnalysis.datum} (${stravaAnalysis.naam})
+${actFields.length ? actFields.join(' | ') : ''}
 ${inzichtTxt}
-pace_hr_correlatie: ${JSON.stringify(stravaAnalysis.data?.pace_hr_correlatie)}`;
+pace_hr_correlatie: ${JSON.stringify(d.pace_hr_correlatie)}`;
   }
 
   // MEM context
@@ -5556,6 +5601,9 @@ async function init() {
   } else {
     await checkStravaConnection();
   }
+
+  // Fetch Strava activities after token is set (for coach context when no Intervals.icu)
+  if (_stravaAccessToken) fetchStravaActivities().catch(() => {});
 
   // Fetch gear after Strava token is available (so Strava shoes are used if connected)
   fetchGear().then(g => { if (g) _gearData = g; });
